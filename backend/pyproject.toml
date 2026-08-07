@@ -1,0 +1,12 @@
+[tool.black]
+line-length = 79
+target-version = ["py313"]
+extend-exclude = "migrations"
+
+[tool.ruff]
+line-length = 79
+target-version = "py313"
+exclude = ["migrations", ".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]

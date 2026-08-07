@@ -4,6 +4,7 @@ import os
 
 from flask import Flask
 
+from app.commands import seed_db
 from app.extensions import api, db, migrate
 from app.models import (  # noqa: F401
     Comment,
@@ -17,7 +18,6 @@ from app.models import (  # noqa: F401
 )
 from app.resources.health import HealthResource
 from config import CONFIG_BY_NAME
-
 
 api.add_resource(HealthResource, "/health")
 
@@ -39,7 +39,8 @@ def create_app(config_name: str | None = None) -> Flask:
     config_class.init_app(app)
 
     db.init_app(app)
-    migrate.init_app(app, db)
+    migrate.init_app(app, db, compare_type=True)
     api.init_app(app)
+    app.cli.add_command(seed_db)
 
     return app

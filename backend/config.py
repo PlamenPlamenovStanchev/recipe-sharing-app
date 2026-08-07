@@ -5,19 +5,40 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-
 load_dotenv(Path(__file__).resolve().parent / ".env")
+
+
+def normalize_database_url(database_url: str) -> str:
+    """Normalize PostgreSQL URLs for SQLAlchemy's Psycopg driver."""
+    if database_url.startswith("postgres://"):
+        database_url = "postgresql://" + database_url.removeprefix(
+            "postgres://"
+        )
+
+    if database_url.startswith("postgresql://"):
+        return "postgresql+psycopg://" + database_url.removeprefix(
+            "postgresql://"
+        )
+
+    return database_url
 
 
 class BaseConfig:
     """Shared configuration values and initialization."""
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        "pool_pre_ping": True,
+        "pool_recycle": 1_800,
+        "pool_size": 5,
+        "max_overflow": 5,
+        "pool_timeout": 30,
+    }
     TESTING = False
     DEBUG = False
 
     @classmethod
-    def init_app(cls, app):
+    def init_app(cls, app) -> None:
         """Load environment-dependent settings onto an application."""
         database_variable = (
             "TEST_DATABASE_URL" if cls.TESTING else "DATABASE_URL"
@@ -29,8 +50,15 @@ class BaseConfig:
                 f"{database_variable} must be set to start the application."
             )
 
+        if cls.TESTING and database_url == os.getenv("DATABASE_URL"):
+            raise RuntimeError(
+                "TEST_DATABASE_URL must be different from DATABASE_URL."
+            )
+
         app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
-        app.config["SQLALCHEMY_DATABASE_URI"] = database_url
+        app.config["SQLALCHEMY_DATABASE_URI"] = normalize_database_url(
+            database_url
+        )
 
 
 class DevelopmentConfig(BaseConfig):
@@ -43,13 +71,18 @@ class TestingConfig(BaseConfig):
     """Configuration used by automated tests."""
 
     TESTING = True
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        **BaseConfig.SQLALCHEMY_ENGINE_OPTIONS,
+        "pool_size": 1,
+        "max_overflow": 0,
+    }
 
 
 class ProductionConfig(BaseConfig):
     """Configuration used in production."""
 
     @classmethod
-    def init_app(cls, app):
+    def init_app(cls, app) -> None:
         """Require a secret key before starting a production application."""
         super().init_app(app)
 

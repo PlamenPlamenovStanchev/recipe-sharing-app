@@ -5,7 +5,6 @@ from argon2.exceptions import InvalidHashError, VerificationError
 
 from app.validators.password import validate_password
 
-
 _password_hasher = PasswordHasher()
 
 
