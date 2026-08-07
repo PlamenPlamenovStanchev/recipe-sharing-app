@@ -10,6 +10,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.extensions import db
 from app.models.enums import UserRole
 from app.models.mixins import TimestampMixin
+from app.services.password import (
+    hash_password,
+    password_needs_rehash,
+    verify_password,
+)
 
 if TYPE_CHECKING:
     from app.models.comment import Comment
@@ -74,3 +79,19 @@ class User(TimestampMixin, db.Model):
         back_populates="recipient",
         passive_deletes="all",
     )
+
+    def set_password(self, plain_password: str) -> None:
+        """Validate and securely hash a password for storage."""
+        self.password_hash = hash_password(plain_password)
+
+    def check_password(self, plain_password: str) -> bool:
+        """Return whether a password matches this user's stored hash."""
+        return verify_password(self.password_hash, plain_password)
+
+    def password_needs_rehash(self) -> bool:
+        """Return whether this user's hash needs updated Argon2 parameters."""
+        return password_needs_rehash(self.password_hash)
+
+    def __repr__(self) -> str:
+        """Return a safe representation that excludes credential material."""
+        return f"<User id={self.id} username={self.username!r}>"
