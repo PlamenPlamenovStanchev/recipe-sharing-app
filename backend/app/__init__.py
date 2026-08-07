@@ -19,11 +19,14 @@ from app.models import (  # noqa: F401
 )
 from app.resources.auth import LoginResource, RegisterResource
 from app.resources.health import HealthResource
+from app.resources.recipes import RecipeDetailResource, RecipeListResource
 from config import CONFIG_BY_NAME
 
 api.add_resource(HealthResource, "/health")
 api.add_resource(RegisterResource, "/auth/register")
 api.add_resource(LoginResource, "/auth/login")
+api.add_resource(RecipeListResource, "/recipes")
+api.add_resource(RecipeDetailResource, "/recipes/<int:recipe_id>")
 
 
 def create_app(config_name: str | None = None) -> Flask:

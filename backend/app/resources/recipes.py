@@ -1,0 +1,141 @@
+"""Public and authenticated recipe API resources."""
+
+from flask import request
+from flask_jwt_extended import verify_jwt_in_request
+from flask_restful import Resource
+from marshmallow import ValidationError
+
+from app.authorization import get_current_authenticated_user, roles_required
+from app.models.enums import RecipeStatus, UserRole
+from app.repositories import get_recipe, list_approved_recipes
+from app.schemas import RecipeInputSchema, RecipeOutputSchema
+from app.services.recipes import (
+    RecipeConflictError,
+    RecipePermissionError,
+    RecipeValidationError,
+    create_recipe,
+    delete_recipe,
+    update_recipe,
+)
+
+_AUTHENTICATED_ROLES = (UserRole.USER, UserRole.MODERATOR, UserRole.ADMIN)
+
+
+def _validation_error(error: ValidationError) -> tuple[dict, int]:
+    """Return a consistent response for Marshmallow validation failures."""
+    return {"message": "Validation failed.", "errors": error.messages}, 400
+
+
+def _not_found() -> tuple[dict[str, str], int]:
+    """Return the standard response for unavailable recipes."""
+    return {"message": "Recipe not found."}, 404
+
+
+def _active_user_or_error():
+    """Return the active user after an authentication decorator runs."""
+    user = get_current_authenticated_user()
+    if user is None:
+        return None, ({"message": "Authentication is required."}, 401)
+    return user, None
+
+
+def _can_view(recipe, user) -> bool:
+    """Return whether a public or authenticated viewer may see a recipe."""
+    if recipe.status == RecipeStatus.APPROVED:
+        return True
+    if user is None:
+        return False
+    return recipe.author_id == user.id or user.role in {
+        UserRole.MODERATOR,
+        UserRole.ADMIN,
+    }
+
+
+class RecipeListResource(Resource):
+    """List public recipes or create a recipe for the current user."""
+
+    def get(self):
+        """Return approved recipes ordered newest first."""
+        return RecipeOutputSchema(many=True).dump(list_approved_recipes()), 200
+
+    @roles_required(*_AUTHENTICATED_ROLES)
+    def post(self):
+        """Create a draft recipe owned by the current authenticated user."""
+        try:
+            recipe_data = RecipeInputSchema().load(
+                request.get_json(silent=True) or {}
+            )
+        except ValidationError as error:
+            return _validation_error(error)
+
+        user, error_response = _active_user_or_error()
+        if error_response:
+            return error_response
+        try:
+            recipe = create_recipe(user, recipe_data)
+        except RecipeValidationError as error:
+            return {"message": str(error)}, 400
+        except RecipeConflictError as error:
+            return {"message": str(error)}, 409
+
+        return RecipeOutputSchema().dump(recipe), 201
+
+
+class RecipeDetailResource(Resource):
+    """Read, update, or delete an individual recipe."""
+
+    def get(self, recipe_id: int):
+        """Return a recipe when its current visibility permits access."""
+        verify_jwt_in_request(optional=True)
+        recipe = get_recipe(recipe_id)
+        if recipe is None:
+            return _not_found()
+        user = get_current_authenticated_user()
+        if not _can_view(recipe, user):
+            return _not_found()
+        return RecipeOutputSchema().dump(recipe), 200
+
+    @roles_required(*_AUTHENTICATED_ROLES)
+    def put(self, recipe_id: int):
+        """Partially update a recipe subject to current role permissions."""
+        recipe = get_recipe(recipe_id)
+        if recipe is None:
+            return _not_found()
+        try:
+            recipe_data = RecipeInputSchema(partial=True).load(
+                request.get_json(silent=True) or {}
+            )
+        except ValidationError as error:
+            return _validation_error(error)
+
+        user, error_response = _active_user_or_error()
+        if error_response:
+            return error_response
+        try:
+            recipe = update_recipe(recipe, user, recipe_data)
+        except RecipePermissionError:
+            return {"message": "Insufficient permissions."}, 403
+        except RecipeValidationError as error:
+            return {"message": str(error)}, 400
+        except RecipeConflictError as error:
+            return {"message": str(error)}, 409
+
+        return RecipeOutputSchema().dump(recipe), 200
+
+    @roles_required(*_AUTHENTICATED_ROLES)
+    def delete(self, recipe_id: int):
+        """Delete a recipe when the current user has permission."""
+        recipe = get_recipe(recipe_id)
+        if recipe is None:
+            return _not_found()
+        user, error_response = _active_user_or_error()
+        if error_response:
+            return error_response
+        try:
+            delete_recipe(recipe, user)
+        except RecipePermissionError:
+            return {"message": "Insufficient permissions."}, 403
+        except RecipeConflictError as error:
+            return {"message": str(error)}, 409
+
+        return "", 204
