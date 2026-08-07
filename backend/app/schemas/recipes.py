@@ -4,35 +4,47 @@ from marshmallow import Schema, fields, validate
 
 from app.models.enums import RecipeStatus
 from app.schemas.users import UserOutputSchema
-from app.validators import validate_recipe_title
+from app.validators import validate_non_whitespace, validate_recipe_title
 
 
 class RecipeIngredientInputSchema(Schema):
     """Validate one ingredient used by a recipe."""
 
-    name = fields.String(required=True)
-    quantity = fields.String(required=True)
-    unit = fields.String(required=True)
+    name = fields.String(required=True, validate=validate_non_whitespace)
+    quantity = fields.String(allow_none=True)
+    unit = fields.String(allow_none=True)
     position = fields.Integer(required=True, validate=validate.Range(min=1))
-    notes = fields.String(required=True, allow_none=True)
+    notes = fields.String(allow_none=True)
 
 
 class RecipeStepInputSchema(Schema):
     """Validate one ordered recipe instruction."""
 
     step_number = fields.Integer(required=True, validate=validate.Range(min=1))
-    instruction = fields.String(required=True)
+    instruction = fields.String(
+        required=True,
+        validate=validate_non_whitespace,
+    )
 
 
 class RecipeInputSchema(Schema):
     """Validate recipe creation data; pass ``partial=True`` for updates."""
 
     title = fields.String(required=True, validate=validate_recipe_title)
-    description = fields.String(required=True, allow_none=True)
-    ingredients = fields.List(
-        fields.Nested(RecipeIngredientInputSchema), required=True
+    description = fields.String(
+        required=True,
+        validate=validate_non_whitespace,
     )
-    steps = fields.List(fields.Nested(RecipeStepInputSchema), required=True)
+    ingredients = fields.List(
+        fields.Nested(RecipeIngredientInputSchema),
+        required=True,
+        validate=validate.Length(min=1),
+    )
+    steps = fields.List(
+        fields.Nested(RecipeStepInputSchema),
+        required=True,
+        validate=validate.Length(min=1),
+    )
 
 
 class RecipeIngredientOutputSchema(Schema):

@@ -5,6 +5,7 @@ from marshmallow import Schema, ValidationError, fields
 from app.models.enums import UserRole
 from app.validators import (
     PasswordValidationError,
+    validate_non_whitespace,
     validate_password,
     validate_username,
 )
@@ -28,8 +29,8 @@ class UserRegistrationSchema(Schema):
         load_only=True,
         validate=validate_registration_password,
     )
-    first_name = fields.String(required=True)
-    last_name = fields.String(required=True)
+    first_name = fields.String(required=True, validate=validate_non_whitespace)
+    last_name = fields.String(required=True, validate=validate_non_whitespace)
 
 
 class UserOutputSchema(Schema):
