@@ -9,6 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from app.extensions import db
 from app.models.enums import RecipeStatus, UserRole
 from app.models.ingredient import Ingredient
+from app.models.mixins import utc_now
 from app.models.recipe import Recipe
 from app.models.recipe_ingredient import RecipeIngredient
 from app.models.recipe_step import RecipeStep
@@ -25,6 +26,10 @@ class RecipePermissionError(Exception):
 
 class RecipeValidationError(Exception):
     """Raised when structured recipe data violates ordering rules."""
+
+
+class RecipeTransitionError(Exception):
+    """Raised when a moderation state transition is not allowed."""
 
 
 def _slugify(title: str) -> str:
@@ -192,3 +197,52 @@ def delete_recipe(recipe: Recipe, user: User) -> None:
 
     db.session.delete(recipe)
     _commit()
+
+
+def submit_recipe(recipe: Recipe, user: User) -> Recipe:
+    """Submit an author's draft or rejected recipe for moderation."""
+    if recipe.author_id != user.id:
+        raise RecipePermissionError
+    if recipe.status not in {RecipeStatus.DRAFT, RecipeStatus.REJECTED}:
+        raise RecipeTransitionError(
+            "Recipe cannot be submitted in its current state."
+        )
+
+    recipe.status = RecipeStatus.PENDING
+    recipe.submitted_at = utc_now()
+    recipe.rejected_at = None
+    recipe.rejection_reason = None
+    _commit()
+    return recipe
+
+
+def approve_recipe(recipe: Recipe, reviewer: User) -> Recipe:
+    """Approve a pending recipe as a moderator or administrator."""
+    if reviewer.role not in {UserRole.MODERATOR, UserRole.ADMIN}:
+        raise RecipePermissionError
+    if recipe.status != RecipeStatus.PENDING:
+        raise RecipeTransitionError("Only pending recipes can be approved.")
+
+    recipe.status = RecipeStatus.APPROVED
+    recipe.approved_by_id = reviewer.id
+    recipe.approved_at = utc_now()
+    recipe.rejected_at = None
+    recipe.rejection_reason = None
+    _commit()
+    return recipe
+
+
+def reject_recipe(recipe: Recipe, reviewer: User, reason: str) -> Recipe:
+    """Reject a pending recipe as a moderator or administrator."""
+    if reviewer.role not in {UserRole.MODERATOR, UserRole.ADMIN}:
+        raise RecipePermissionError
+    if recipe.status != RecipeStatus.PENDING:
+        raise RecipeTransitionError("Only pending recipes can be rejected.")
+
+    recipe.status = RecipeStatus.REJECTED
+    recipe.rejected_at = utc_now()
+    recipe.rejection_reason = reason
+    recipe.approved_by_id = None
+    recipe.approved_at = None
+    _commit()
+    return recipe

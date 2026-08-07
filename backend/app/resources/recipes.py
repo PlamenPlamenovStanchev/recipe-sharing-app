@@ -8,13 +8,21 @@ from marshmallow import ValidationError
 from app.authorization import get_current_authenticated_user, roles_required
 from app.models.enums import RecipeStatus, UserRole
 from app.repositories import get_recipe, list_approved_recipes
-from app.schemas import RecipeInputSchema, RecipeOutputSchema
+from app.schemas import (
+    RecipeInputSchema,
+    RecipeOutputSchema,
+    RecipeRejectionSchema,
+)
 from app.services.recipes import (
     RecipeConflictError,
     RecipePermissionError,
+    RecipeTransitionError,
     RecipeValidationError,
+    approve_recipe,
     create_recipe,
     delete_recipe,
+    reject_recipe,
+    submit_recipe,
     update_recipe,
 )
 
@@ -139,3 +147,76 @@ class RecipeDetailResource(Resource):
             return {"message": str(error)}, 409
 
         return "", 204
+
+
+class RecipeSubmitResource(Resource):
+    """Submit an author's recipe for moderation."""
+
+    @roles_required(*_AUTHENTICATED_ROLES)
+    def post(self, recipe_id: int):
+        """Move an eligible recipe to the pending moderation state."""
+        recipe = get_recipe(recipe_id)
+        if recipe is None:
+            return _not_found()
+        user, error_response = _active_user_or_error()
+        if error_response:
+            return error_response
+        try:
+            recipe = submit_recipe(recipe, user)
+        except RecipePermissionError:
+            return {"message": "Insufficient permissions."}, 403
+        except RecipeTransitionError as error:
+            return {"message": str(error)}, 409
+
+        return RecipeOutputSchema().dump(recipe), 200
+
+
+class RecipeApproveResource(Resource):
+    """Approve pending recipes as moderation staff."""
+
+    @roles_required(UserRole.MODERATOR, UserRole.ADMIN)
+    def post(self, recipe_id: int):
+        """Approve a pending recipe using the current staff member."""
+        recipe = get_recipe(recipe_id)
+        if recipe is None:
+            return _not_found()
+        user, error_response = _active_user_or_error()
+        if error_response:
+            return error_response
+        try:
+            recipe = approve_recipe(recipe, user)
+        except RecipePermissionError:
+            return {"message": "Insufficient permissions."}, 403
+        except RecipeTransitionError as error:
+            return {"message": str(error)}, 409
+
+        return RecipeOutputSchema().dump(recipe), 200
+
+
+class RecipeRejectResource(Resource):
+    """Reject pending recipes as moderation staff."""
+
+    @roles_required(UserRole.MODERATOR, UserRole.ADMIN)
+    def post(self, recipe_id: int):
+        """Reject a pending recipe with a validated moderation reason."""
+        recipe = get_recipe(recipe_id)
+        if recipe is None:
+            return _not_found()
+        try:
+            rejection_data = RecipeRejectionSchema().load(
+                request.get_json(silent=True) or {}
+            )
+        except ValidationError as error:
+            return _validation_error(error)
+
+        user, error_response = _active_user_or_error()
+        if error_response:
+            return error_response
+        try:
+            recipe = reject_recipe(recipe, user, rejection_data["reason"])
+        except RecipePermissionError:
+            return {"message": "Insufficient permissions."}, 403
+        except RecipeTransitionError as error:
+            return {"message": str(error)}, 409
+
+        return RecipeOutputSchema().dump(recipe), 200

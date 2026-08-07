@@ -5,6 +5,7 @@ from app.schemas.recipes import (
     RecipeIngredientOutputSchema,
     RecipeInputSchema,
     RecipeOutputSchema,
+    RecipeRejectionSchema,
     RecipeStepInputSchema,
     RecipeStepOutputSchema,
 )
@@ -20,6 +21,7 @@ __all__ = [
     "RecipeIngredientOutputSchema",
     "RecipeInputSchema",
     "RecipeOutputSchema",
+    "RecipeRejectionSchema",
     "RecipeStepInputSchema",
     "RecipeStepOutputSchema",
     "UserOutputSchema",

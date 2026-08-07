@@ -47,6 +47,18 @@ class RecipeInputSchema(Schema):
     )
 
 
+class RecipeRejectionSchema(Schema):
+    """Validate the reason supplied when rejecting a pending recipe."""
+
+    reason = fields.String(
+        required=True,
+        validate=[
+            validate.Length(min=5, max=500),
+            validate_non_whitespace,
+        ],
+    )
+
+
 class RecipeIngredientOutputSchema(Schema):
     """Serialize an ingredient as it appears in a recipe."""
 
