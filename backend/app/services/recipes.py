@@ -141,8 +141,11 @@ def create_recipe(author: User, recipe_data: dict) -> Recipe:
 
 def _may_update(recipe: Recipe, user: User) -> bool:
     """Return whether a user can update a recipe."""
-    return user.role in {UserRole.MODERATOR, UserRole.ADMIN} or (
+    if user.role in {UserRole.MODERATOR, UserRole.ADMIN}:
+        return True
+    return (
         recipe.author_id == user.id
+        and recipe.status in {RecipeStatus.DRAFT, RecipeStatus.REJECTED}
     )
 
 
