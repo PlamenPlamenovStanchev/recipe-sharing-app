@@ -4,6 +4,7 @@ import os
 
 from flask import Flask
 
+from app.authorization import configure_jwt_error_handlers
 from app.commands import seed_db
 from app.extensions import api, db, jwt, migrate
 from app.models import (  # noqa: F401
@@ -45,6 +46,7 @@ def create_app(config_name: str | None = None) -> Flask:
     db.init_app(app)
     migrate.init_app(app, db, compare_type=True)
     jwt.init_app(app)
+    configure_jwt_error_handlers()
     api.init_app(app)
     app.cli.add_command(seed_db)
 
