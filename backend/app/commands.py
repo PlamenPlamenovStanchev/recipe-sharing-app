@@ -134,7 +134,7 @@ def _get_or_create_recipe(
 @click.command("seed-db")
 def seed_db() -> None:
     """Create idempotent development-only seed data."""
-    if not current_app.config["DEBUG"]:
+    if current_app.config["APP_ENV"] != "development":
         raise click.ClickException("seed-db is available only in development.")
 
     click.secho(

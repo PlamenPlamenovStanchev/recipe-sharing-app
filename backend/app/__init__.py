@@ -36,6 +36,7 @@ def create_app(config_name: str | None = None) -> Flask:
 
     app = Flask(__name__)
     app.config.from_object(config_class)
+    app.config["APP_ENV"] = selected_config.lower()
     config_class.init_app(app)
 
     db.init_app(app)
