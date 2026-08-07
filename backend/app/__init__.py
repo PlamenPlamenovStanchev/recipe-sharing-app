@@ -5,6 +5,16 @@ import os
 from flask import Flask
 
 from app.extensions import api, db, migrate
+from app.models import (  # noqa: F401
+    Comment,
+    Donation,
+    Ingredient,
+    Recipe,
+    RecipeIngredient,
+    RecipeLike,
+    RecipeStep,
+    User,
+)
 from app.resources.health import HealthResource
 from config import CONFIG_BY_NAME
 
