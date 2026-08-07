@@ -1,12 +1,35 @@
 """Flask application package."""
 
+import os
+
 from flask import Flask
 
-from config import Config
+from app.extensions import api, db, migrate
+from app.resources.health import HealthResource
+from config import CONFIG_BY_NAME
 
 
-def create_app(config_class: type[Config] = Config) -> Flask:
-    """Create the Flask application instance."""
+api.add_resource(HealthResource, "/health")
+
+
+def create_app(config_name: str | None = None) -> Flask:
+    """Create and configure the Flask application instance."""
+    selected_config = config_name or os.getenv("FLASK_ENV", "development")
+    config_class = CONFIG_BY_NAME.get(selected_config.lower())
+
+    if config_class is None:
+        supported = ", ".join(CONFIG_BY_NAME)
+        raise ValueError(
+            f"Unsupported configuration '{selected_config}'. "
+            f"Choose one of: {supported}."
+        )
+
     app = Flask(__name__)
     app.config.from_object(config_class)
+    config_class.init_app(app)
+
+    db.init_app(app)
+    migrate.init_app(app, db)
+    api.init_app(app)
+
     return app
