@@ -1,6 +1,7 @@
 """Environment-based configuration for the Flask application."""
 
 import os
+from datetime import timedelta
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -56,6 +57,12 @@ class BaseConfig:
             )
 
         app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
+        app.config["JWT_SECRET_KEY"] = os.getenv(
+            "JWT_SECRET_KEY", app.config["SECRET_KEY"]
+        )
+        app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(
+            minutes=int(os.getenv("JWT_ACCESS_TOKEN_EXPIRES_MINUTES", "60"))
+        )
         app.config["SQLALCHEMY_DATABASE_URI"] = normalize_database_url(
             database_url
         )
@@ -88,6 +95,8 @@ class ProductionConfig(BaseConfig):
 
         if not app.config["SECRET_KEY"]:
             raise RuntimeError("SECRET_KEY must be set in production.")
+        if not os.getenv("JWT_SECRET_KEY"):
+            raise RuntimeError("JWT_SECRET_KEY must be set in production.")
 
 
 CONFIG_BY_NAME = {

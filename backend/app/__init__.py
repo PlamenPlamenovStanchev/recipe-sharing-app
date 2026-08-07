@@ -5,7 +5,7 @@ import os
 from flask import Flask
 
 from app.commands import seed_db
-from app.extensions import api, db, migrate
+from app.extensions import api, db, jwt, migrate
 from app.models import (  # noqa: F401
     Comment,
     Donation,
@@ -16,10 +16,13 @@ from app.models import (  # noqa: F401
     RecipeStep,
     User,
 )
+from app.resources.auth import LoginResource, RegisterResource
 from app.resources.health import HealthResource
 from config import CONFIG_BY_NAME
 
 api.add_resource(HealthResource, "/health")
+api.add_resource(RegisterResource, "/auth/register")
+api.add_resource(LoginResource, "/auth/login")
 
 
 def create_app(config_name: str | None = None) -> Flask:
@@ -41,6 +44,7 @@ def create_app(config_name: str | None = None) -> Flask:
 
     db.init_app(app)
     migrate.init_app(app, db, compare_type=True)
+    jwt.init_app(app)
     api.init_app(app)
     app.cli.add_command(seed_db)
 
