@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { useAuth } from '../auth/useAuth.js'
+import { CommentsSection } from '../components/CommentsSection.jsx'
 import { EmptyState } from '../components/EmptyState.jsx'
 import { ErrorMessage } from '../components/ErrorMessage.jsx'
 import { LoadingSpinner } from '../components/LoadingSpinner.jsx'
+import { LikeButton } from '../components/LikeButton.jsx'
 import { RecipeImage } from '../components/RecipeImage.jsx'
 import { api, authenticatedApi } from '../lib/api.js'
 import { getRequestErrorMessage } from '../lib/formErrors.js'
@@ -34,6 +36,9 @@ export function RecipeDetailsPage() {
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [reloadKey, setReloadKey] = useState(0)
+  const updateLikeCount = useCallback((likeCount) => {
+    setRecipe((current) => current ? { ...current, like_count: likeCount } : current)
+  }, [])
 
   useEffect(() => {
     if (isRestoring) return undefined
@@ -73,7 +78,7 @@ export function RecipeDetailsPage() {
         <div>
           <div className="flex flex-wrap items-center gap-2">
             {recipe.status && recipe.status !== 'APPROVED' ? <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">{recipe.status}</span> : null}
-            <span className="rounded-full bg-rose-50 px-3 py-1 text-sm font-semibold text-rose-700">{recipe.like_count ?? 0} likes</span>
+            {recipe.status === 'APPROVED' ? <LikeButton recipeId={recipe.id} initialCount={recipe.like_count ?? 0} initiallyLiked={recipe.liked_by_current_user ?? false} isAuthenticated={isAuthenticated} onCountChange={updateLikeCount} /> : <span className="rounded-full bg-rose-50 px-3 py-1 text-sm font-semibold text-rose-700">{recipe.like_count ?? 0} likes</span>}
           </div>
           <h1 className="mt-4 text-4xl font-black tracking-tight text-stone-950 sm:text-5xl">{recipe.title}</h1>
           <p className="mt-4 text-lg leading-8 text-stone-600">{recipe.description}</p>
@@ -94,6 +99,7 @@ export function RecipeDetailsPage() {
           {recipe.steps?.length ? <ol className="mt-5 space-y-5">{recipe.steps.map((step, index) => <li key={step.step_number ?? index} className="flex gap-4"><span className="grid size-7 shrink-0 place-items-center rounded-full bg-emerald-100 text-sm font-bold text-emerald-800">{step.step_number ?? index + 1}</span><p className="pt-0.5 leading-7 text-stone-700">{step.instruction}</p></li>)}</ol> : <p className="mt-4 text-stone-600">Steps have not been added yet.</p>}
         </section>
       </div>
+      {recipe.status === 'APPROVED' ? <CommentsSection recipeId={recipe.id} currentUser={currentUser} isAuthenticated={isAuthenticated} /> : null}
     </article>
   )
 }
