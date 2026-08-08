@@ -17,6 +17,10 @@ from app.models import (  # noqa: F401
     RecipeStep,
     User,
 )
+from app.resources.admin_users import (
+    AdminUserDetailResource,
+    AdminUserListResource,
+)
 from app.resources.auth import LoginResource, RegisterResource
 from app.resources.comments import (
     CommentDetailResource,
@@ -39,6 +43,8 @@ from config import CONFIG_BY_NAME
 api.add_resource(HealthResource, "/health")
 api.add_resource(RegisterResource, "/auth/register")
 api.add_resource(LoginResource, "/auth/login")
+api.add_resource(AdminUserListResource, "/admin/users")
+api.add_resource(AdminUserDetailResource, "/admin/users/<int:user_id>")
 api.add_resource(RecipeListResource, "/recipes")
 api.add_resource(PendingRecipeListResource, "/recipes/pending")
 api.add_resource(RecipeDetailResource, "/recipes/<int:recipe_id>")

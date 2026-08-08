@@ -1,5 +1,10 @@
 """Serialization schema package."""
 
+from app.schemas.admin_users import (
+    AdminUserCreateSchema,
+    AdminUserOutputSchema,
+    AdminUserUpdateSchema,
+)
 from app.schemas.comments import (
     CommentAuthorOutputSchema,
     CommentInputSchema,
@@ -22,6 +27,9 @@ from app.schemas.users import (
 )
 
 __all__ = [
+    "AdminUserCreateSchema",
+    "AdminUserOutputSchema",
+    "AdminUserUpdateSchema",
     "CommentAuthorOutputSchema",
     "CommentInputSchema",
     "CommentOutputSchema",
