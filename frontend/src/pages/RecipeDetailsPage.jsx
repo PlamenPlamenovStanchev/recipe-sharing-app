@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { useAuth } from '../auth/useAuth.js'
 import { CommentsSection } from '../components/CommentsSection.jsx'
+import { DonationModal } from '../components/DonationModal.jsx'
 import { EmptyState } from '../components/EmptyState.jsx'
 import { ErrorMessage } from '../components/ErrorMessage.jsx'
 import { LoadingSpinner } from '../components/LoadingSpinner.jsx'
@@ -69,6 +70,7 @@ export function RecipeDetailsPage() {
   const createdAt = formatDate(recipe.created_at)
   const approvedAt = formatDate(recipe.approved_at)
   const mayManage = canManageRecipe(recipe, currentUser)
+  const mayDonate = isAuthenticated && recipe.status === 'APPROVED' && recipe.author?.id !== currentUser?.id
 
   return (
     <article className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
@@ -87,6 +89,7 @@ export function RecipeDetailsPage() {
             {createdAt ? <div><dt className="font-semibold text-stone-500">Created</dt><dd className="mt-1 font-medium text-stone-900">{createdAt}</dd></div> : null}
             {approvedAt ? <div><dt className="font-semibold text-stone-500">Approved</dt><dd className="mt-1 font-medium text-stone-900">{approvedAt}</dd></div> : null}
           </dl>
+          {mayDonate ? <div className="mt-7"><DonationModal recipeId={recipe.id} recipeTitle={recipe.title} /></div> : null}
         </div>
       </div>
       <div className="mt-12 grid gap-10 lg:grid-cols-2">
