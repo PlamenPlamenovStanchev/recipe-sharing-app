@@ -71,6 +71,11 @@ class BaseConfig:
         app.config["AWS_S3_BUCKET_NAME"] = os.getenv("AWS_S3_BUCKET_NAME")
         app.config["AWS_SES_REGION"] = os.getenv("AWS_SES_REGION")
         app.config["AWS_SES_SENDER_EMAIL"] = os.getenv("AWS_SES_SENDER_EMAIL")
+        app.config["PAYMENT_PROVIDER"] = os.getenv(
+            "PAYMENT_PROVIDER", "wise"
+        ).lower()
+        app.config["WISE_API_TOKEN"] = os.getenv("WISE_API_TOKEN")
+        app.config["WISE_PROFILE_ID"] = os.getenv("WISE_PROFILE_ID")
         app.config["SQLALCHEMY_DATABASE_URI"] = normalize_database_url(
             database_url
         )
