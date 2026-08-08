@@ -7,7 +7,11 @@ from marshmallow import ValidationError
 
 from app.authorization import get_current_authenticated_user, roles_required
 from app.models.enums import RecipeStatus, UserRole
-from app.repositories import get_recipe, list_approved_recipes
+from app.repositories import (
+    get_recipe,
+    list_approved_recipes,
+    list_pending_recipes,
+)
 from app.schemas import (
     RecipeInputSchema,
     RecipeRejectionSchema,
@@ -90,6 +94,15 @@ class RecipeListResource(Resource):
             return {"message": str(error)}, 409
 
         return serialize_recipe(recipe), 201
+
+
+class PendingRecipeListResource(Resource):
+    """Expose the oldest-first moderation queue to authorized staff."""
+
+    @roles_required(UserRole.MODERATOR, UserRole.ADMIN)
+    def get(self):
+        """Return only recipes awaiting moderation."""
+        return serialize_recipes(list_pending_recipes()), 200
 
 
 class RecipeDetailResource(Resource):

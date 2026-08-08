@@ -6,6 +6,7 @@ import { CreateRecipePage } from './pages/CreateRecipePage.jsx'
 import { EditRecipePage } from './pages/EditRecipePage.jsx'
 import { HomePage } from './pages/HomePage.jsx'
 import { LoginPage } from './pages/LoginPage.jsx'
+import { ModeratorPage } from './pages/ModeratorPage.jsx'
 import { NotFoundPage } from './pages/NotFoundPage.jsx'
 import { RecipesPage } from './pages/RecipesPage.jsx'
 import { RecipeDetailsPage } from './pages/RecipeDetailsPage.jsx'
@@ -29,6 +30,12 @@ export const router = createBrowserRouter([
             children: [
               { path: 'recipes/new', element: <CreateRecipePage /> },
               { path: 'recipes/:recipeId/edit', element: <EditRecipePage /> },
+            ],
+          },
+          {
+            element: <RoleRoute allowedRoles={['MODERATOR', 'ADMIN']} />,
+            children: [
+              { path: 'moderator', element: <ModeratorPage /> },
             ],
           },
         ],

@@ -30,6 +30,7 @@ export function Navbar() {
           {isRestoring ? null : isAuthenticated ? (
             <>
               <NavLink to="/recipes/new" className={navLinkClass}>Create Recipe</NavLink>
+              {['MODERATOR', 'ADMIN'].includes(currentUser.role) ? <NavLink to="/moderator" className={navLinkClass}>Moderate</NavLink> : null}
               <span className="hidden rounded-full bg-stone-100 px-3 py-2 text-right text-xs leading-tight text-stone-600 sm:block">
                 <strong className="block text-sm text-stone-900">{currentUser.username}</strong>
                 {currentUser.role}

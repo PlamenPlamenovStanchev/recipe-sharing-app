@@ -69,6 +69,22 @@ def list_approved_recipes() -> list[Recipe]:
     return recipes
 
 
+def list_pending_recipes() -> list[Recipe]:
+    """Return pending recipes in moderation queue order."""
+    statement = (
+        db.select(Recipe)
+        .options(*_recipe_load_options())
+        .where(Recipe.status == RecipeStatus.PENDING)
+        .order_by(
+            Recipe.submitted_at.asc().nulls_last(),
+            Recipe.id.asc(),
+        )
+    )
+    recipes = list(db.session.scalars(statement))
+    _attach_like_metadata(recipes)
+    return recipes
+
+
 def get_recipe(
     recipe_id: int, current_user_id: int | None = None
 ) -> Recipe | None:
