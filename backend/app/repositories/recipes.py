@@ -1,5 +1,6 @@
 """Data access for eagerly loaded recipe records."""
 
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import selectinload
 
 from app.extensions import db
@@ -7,6 +8,10 @@ from app.models.enums import RecipeStatus
 from app.models.recipe import Recipe
 from app.models.recipe_ingredient import RecipeIngredient
 from app.models.recipe_like import RecipeLike
+
+
+class RecipeImagePersistenceError(Exception):
+    """Raised when a recipe image key cannot be persisted."""
 
 
 def _recipe_load_options():
@@ -77,3 +82,13 @@ def get_recipe(
     if recipe is not None:
         _attach_like_metadata([recipe], current_user_id)
     return recipe
+
+
+def update_recipe_image_key(recipe: Recipe, image_key: str | None) -> None:
+    """Persist a recipe image key and normalize database failures."""
+    recipe.image_key = image_key
+    try:
+        db.session.commit()
+    except SQLAlchemyError as error:
+        db.session.rollback()
+        raise RecipeImagePersistenceError from error

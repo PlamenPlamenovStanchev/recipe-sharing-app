@@ -63,6 +63,12 @@ class BaseConfig:
         app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(
             minutes=int(os.getenv("JWT_ACCESS_TOKEN_EXPIRES_MINUTES", "60"))
         )
+        app.config["AWS_ACCESS_KEY_ID"] = os.getenv("AWS_ACCESS_KEY_ID")
+        app.config["AWS_SECRET_ACCESS_KEY"] = os.getenv(
+            "AWS_SECRET_ACCESS_KEY"
+        )
+        app.config["AWS_REGION"] = os.getenv("AWS_REGION")
+        app.config["AWS_S3_BUCKET_NAME"] = os.getenv("AWS_S3_BUCKET_NAME")
         app.config["SQLALCHEMY_DATABASE_URI"] = normalize_database_url(
             database_url
         )

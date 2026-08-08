@@ -23,6 +23,7 @@ from app.resources.comments import (
     RecipeCommentListResource,
 )
 from app.resources.health import HealthResource
+from app.resources.images import RecipeImageResource
 from app.resources.likes import RecipeLikeResource
 from app.resources.recipes import (
     RecipeApproveResource,
@@ -47,6 +48,7 @@ api.add_resource(
 )
 api.add_resource(CommentDetailResource, "/comments/<int:comment_id>")
 api.add_resource(RecipeLikeResource, "/recipes/<int:recipe_id>/likes")
+api.add_resource(RecipeImageResource, "/recipes/<int:recipe_id>/image")
 
 
 def create_app(config_name: str | None = None) -> Flask:
