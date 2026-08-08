@@ -10,8 +10,8 @@ from app.services.auth import (
     DuplicateUsernameError,
     InvalidCredentialsError,
     login_user,
-    register_user,
 )
+from app.services.registration import register_user_with_welcome_email
 
 
 def _validation_error_response(error: ValidationError) -> tuple[dict, int]:
@@ -32,7 +32,7 @@ class RegisterResource(Resource):
             return _validation_error_response(error)
 
         try:
-            user = register_user(user_data)
+            user = register_user_with_welcome_email(user_data)
         except DuplicateEmailError:
             return {"message": "Email is already registered."}, 409
         except DuplicateUsernameError:
