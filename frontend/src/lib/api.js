@@ -10,12 +10,15 @@ export class ApiError extends Error {
 }
 
 export async function apiRequest(path, options = {}) {
-  const { body, headers = {}, ...requestOptions } = options
+  const { accessToken, body, headers = {}, ...requestOptions } = options
   const isFormData = body instanceof FormData
   const requestHeaders = new Headers(headers)
 
   if (body !== undefined && !isFormData && !requestHeaders.has('Content-Type')) {
     requestHeaders.set('Content-Type', 'application/json')
+  }
+  if (accessToken && !requestHeaders.has('Authorization')) {
+    requestHeaders.set('Authorization', `Bearer ${accessToken}`)
   }
 
   const response = await fetch(

@@ -11,8 +11,10 @@ Copy-Item .env.example .env
 npm run dev
 ```
 
-Set `VITE_API_BASE_URL` in `.env` to the Flask API origin. The default example
-uses `http://localhost:5000`.
+The default `.env` routes `/api` through Vite's local proxy to
+`http://localhost:5000`, avoiding browser CORS issues during development. Set
+`VITE_API_BASE_URL` to a deployed API origin when that origin allows the
+frontend's browser requests.
 
 ## Checks
 
