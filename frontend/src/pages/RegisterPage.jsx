@@ -22,7 +22,14 @@ function validate(values) {
   if (!values.first_name.trim()) errors.first_name = 'First name is required.'
   if (!values.last_name.trim()) errors.last_name = 'Last name is required.'
   if (!values.password) errors.password = 'Password is required.'
-  else if (values.password.length < 8) errors.password = 'Password must be at least 8 characters.'
+  else if (
+    values.password.length < 8 ||
+    !/[A-Z]/.test(values.password) ||
+    !/[a-z]/.test(values.password) ||
+    !/\d/.test(values.password)
+  ) {
+    errors.password = 'Password must be at least 8 characters and include uppercase, lowercase, and a digit.'
+  }
   return errors
 }
 

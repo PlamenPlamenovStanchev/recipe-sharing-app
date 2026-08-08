@@ -1,5 +1,15 @@
 import { env } from '../config/env.js'
 
+let currentAccessToken = null
+
+export function setAccessToken(accessToken) {
+  currentAccessToken = accessToken || null
+}
+
+export function clearAccessToken() {
+  currentAccessToken = null
+}
+
 export class ApiError extends Error {
   constructor(message, { status, data } = {}) {
     super(message)
@@ -10,15 +20,15 @@ export class ApiError extends Error {
 }
 
 export async function apiRequest(path, options = {}) {
-  const { accessToken, body, headers = {}, ...requestOptions } = options
+  const { authenticated = false, body, headers = {}, ...requestOptions } = options
   const isFormData = body instanceof FormData
   const requestHeaders = new Headers(headers)
 
   if (body !== undefined && !isFormData && !requestHeaders.has('Content-Type')) {
     requestHeaders.set('Content-Type', 'application/json')
   }
-  if (accessToken && !requestHeaders.has('Authorization')) {
-    requestHeaders.set('Authorization', `Bearer ${accessToken}`)
+  if (authenticated && currentAccessToken && !requestHeaders.has('Authorization')) {
+    requestHeaders.set('Authorization', `Bearer ${currentAccessToken}`)
   }
 
   const response = await fetch(
@@ -53,4 +63,14 @@ export const api = {
     apiRequest(path, { ...options, method: 'PUT', body }),
   delete: (path, options) =>
     apiRequest(path, { ...options, method: 'DELETE' }),
+}
+
+export const authenticatedApi = {
+  get: (path, options) => apiRequest(path, { ...options, method: 'GET', authenticated: true }),
+  post: (path, body, options) =>
+    apiRequest(path, { ...options, method: 'POST', body, authenticated: true }),
+  put: (path, body, options) =>
+    apiRequest(path, { ...options, method: 'PUT', body, authenticated: true }),
+  delete: (path, options) =>
+    apiRequest(path, { ...options, method: 'DELETE', authenticated: true }),
 }

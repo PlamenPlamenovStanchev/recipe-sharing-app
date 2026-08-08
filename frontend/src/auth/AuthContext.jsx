@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { api } from '../lib/api.js'
+import { api, clearAccessToken, setAccessToken } from '../lib/api.js'
 import { AuthContext } from './context.js'
 
 const TOKEN_STORAGE_KEY = 'recipe-share.access-token'
@@ -41,6 +41,11 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const restoredAuth = getStoredAuth()
+    if (restoredAuth) {
+      setAccessToken(restoredAuth.accessToken)
+    } else {
+      clearAccessToken()
+    }
     setAuth({
       accessToken: restoredAuth?.accessToken ?? null,
       user: restoredAuth?.user ?? null,
@@ -55,6 +60,7 @@ export function AuthProvider({ children }) {
       }
       localStorage.setItem(TOKEN_STORAGE_KEY, accessToken)
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user))
+      setAccessToken(accessToken)
       setAuth({ accessToken, user, status: 'authenticated' })
       return user
     }
@@ -69,6 +75,7 @@ export function AuthProvider({ children }) {
       register: (registration) => api.post('/auth/register', registration),
       logout: () => {
         clearStoredAuth()
+        clearAccessToken()
         setAuth({ accessToken: null, user: null, status: 'anonymous' })
       },
     }
