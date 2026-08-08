@@ -84,6 +84,8 @@ class RecipeOutputSchema(Schema):
     slug = fields.String(dump_only=True)
     description = fields.String(dump_only=True, allow_none=True)
     status = fields.Enum(RecipeStatus, by_value=True, dump_only=True)
+    like_count = fields.Integer(dump_only=True, dump_default=0)
+    liked_by_current_user = fields.Boolean(dump_only=True)
     author = fields.Nested(UserOutputSchema, dump_only=True)
     ingredients = fields.List(
         fields.Nested(RecipeIngredientOutputSchema),

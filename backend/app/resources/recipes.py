@@ -95,13 +95,19 @@ class RecipeDetailResource(Resource):
     def get(self, recipe_id: int):
         """Return a recipe when its current visibility permits access."""
         verify_jwt_in_request(optional=True)
-        recipe = get_recipe(recipe_id)
+        user = get_current_authenticated_user()
+        recipe = get_recipe(
+            recipe_id,
+            current_user_id=user.id if user is not None else None,
+        )
         if recipe is None:
             return _not_found()
-        user = get_current_authenticated_user()
         if not _can_view(recipe, user):
             return _not_found()
-        return RecipeOutputSchema().dump(recipe), 200
+        excluded_fields = (
+            () if user is not None else ("liked_by_current_user",)
+        )
+        return RecipeOutputSchema(exclude=excluded_fields).dump(recipe), 200
 
     @roles_required(*_AUTHENTICATED_ROLES)
     def put(self, recipe_id: int):
