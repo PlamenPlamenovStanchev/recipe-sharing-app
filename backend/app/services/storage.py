@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from typing import Any
-from urllib.parse import quote
 from uuid import uuid4
 
 import boto3
@@ -28,6 +27,10 @@ class ImageUploadError(ImageStorageError):
 
 class ImageDeleteError(ImageStorageError):
     """Raised when S3 cannot delete an image."""
+
+
+class ImageUrlGenerationError(ImageStorageError):
+    """Raised when S3 cannot create a private image URL."""
 
 
 class ImageValidationError(Exception):
@@ -55,6 +58,7 @@ class S3RecipeImageStorage:
         secret_access_key: str | None,
         region: str | None,
         bucket_name: str | None,
+        presigned_url_expiration: int = 3600,
         client: Any | None = None,
     ) -> None:
         values = {
@@ -71,6 +75,7 @@ class S3RecipeImageStorage:
 
         self.region = region
         self.bucket_name = bucket_name
+        self.presigned_url_expiration = presigned_url_expiration
         self.client = (
             client
             if client is not None
@@ -90,6 +95,9 @@ class S3RecipeImageStorage:
             secret_access_key=current_app.config.get("AWS_SECRET_ACCESS_KEY"),
             region=current_app.config.get("AWS_REGION"),
             bucket_name=current_app.config.get("AWS_S3_BUCKET_NAME"),
+            presigned_url_expiration=current_app.config.get(
+                "AWS_S3_PRESIGNED_URL_EXPIRATION", 3600
+            ),
         )
 
     def upload_recipe_image(
@@ -131,13 +139,16 @@ class S3RecipeImageStorage:
             raise ImageDeleteError("Recipe image deletion failed.") from error
 
     def generate_image_url(self, image_key: str | None) -> str | None:
-        """Return the regional S3 URL for an object key."""
+        """Return a temporary private URL for an existing object key."""
         if not image_key:
             return None
-        encoded_key = quote(image_key, safe="/")
-        if self.region == "us-east-1":
-            return f"https://{self.bucket_name}.s3.amazonaws.com/{encoded_key}"
-        return (
-            f"https://{self.bucket_name}.s3.{self.region}.amazonaws.com/"
-            f"{encoded_key}"
-        )
+        try:
+            return self.client.generate_presigned_url(
+                "get_object",
+                Params={"Bucket": self.bucket_name, "Key": image_key},
+                ExpiresIn=self.presigned_url_expiration,
+            )
+        except (BotoCoreError, ClientError) as error:
+            raise ImageUrlGenerationError(
+                "Recipe image URL generation failed."
+            ) from error

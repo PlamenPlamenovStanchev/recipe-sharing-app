@@ -95,3 +95,4 @@ class RecipeOutputSchema(Schema):
     steps = fields.List(fields.Nested(RecipeStepOutputSchema), dump_only=True)
     created_at = fields.DateTime(dump_only=True)
     approved_at = fields.DateTime(dump_only=True, allow_none=True)
+    image_url = fields.String(dump_only=True, allow_none=True)

@@ -10,8 +10,11 @@ from app.models.enums import RecipeStatus, UserRole
 from app.repositories import get_recipe, list_approved_recipes
 from app.schemas import (
     RecipeInputSchema,
-    RecipeOutputSchema,
     RecipeRejectionSchema,
+)
+from app.services.recipe_serialization import (
+    serialize_recipe,
+    serialize_recipes,
 )
 from app.services.recipes import (
     RecipeConflictError,
@@ -64,7 +67,7 @@ class RecipeListResource(Resource):
 
     def get(self):
         """Return approved recipes ordered newest first."""
-        return RecipeOutputSchema(many=True).dump(list_approved_recipes()), 200
+        return serialize_recipes(list_approved_recipes()), 200
 
     @roles_required(*_AUTHENTICATED_ROLES)
     def post(self):
@@ -86,7 +89,7 @@ class RecipeListResource(Resource):
         except RecipeConflictError as error:
             return {"message": str(error)}, 409
 
-        return RecipeOutputSchema().dump(recipe), 201
+        return serialize_recipe(recipe), 201
 
 
 class RecipeDetailResource(Resource):
@@ -107,7 +110,7 @@ class RecipeDetailResource(Resource):
         excluded_fields = (
             () if user is not None else ("liked_by_current_user",)
         )
-        return RecipeOutputSchema(exclude=excluded_fields).dump(recipe), 200
+        return serialize_recipes([recipe], exclude=excluded_fields)[0], 200
 
     @roles_required(*_AUTHENTICATED_ROLES)
     def put(self, recipe_id: int):
@@ -134,7 +137,7 @@ class RecipeDetailResource(Resource):
         except RecipeConflictError as error:
             return {"message": str(error)}, 409
 
-        return RecipeOutputSchema().dump(recipe), 200
+        return serialize_recipe(recipe), 200
 
     @roles_required(*_AUTHENTICATED_ROLES)
     def delete(self, recipe_id: int):
@@ -174,7 +177,7 @@ class RecipeSubmitResource(Resource):
         except RecipeTransitionError as error:
             return {"message": str(error)}, 409
 
-        return RecipeOutputSchema().dump(recipe), 200
+        return serialize_recipe(recipe), 200
 
 
 class RecipeApproveResource(Resource):
@@ -196,7 +199,7 @@ class RecipeApproveResource(Resource):
         except RecipeTransitionError as error:
             return {"message": str(error)}, 409
 
-        return RecipeOutputSchema().dump(recipe), 200
+        return serialize_recipe(recipe), 200
 
 
 class RecipeRejectResource(Resource):
@@ -225,4 +228,4 @@ class RecipeRejectResource(Resource):
         except RecipeTransitionError as error:
             return {"message": str(error)}, 409
 
-        return RecipeOutputSchema().dump(recipe), 200
+        return serialize_recipe(recipe), 200

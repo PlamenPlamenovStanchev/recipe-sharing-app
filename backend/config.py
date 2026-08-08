@@ -69,6 +69,9 @@ class BaseConfig:
         )
         app.config["AWS_REGION"] = os.getenv("AWS_REGION")
         app.config["AWS_S3_BUCKET_NAME"] = os.getenv("AWS_S3_BUCKET_NAME")
+        app.config["AWS_S3_PRESIGNED_URL_EXPIRATION"] = int(
+            os.getenv("AWS_S3_PRESIGNED_URL_EXPIRATION", "3600")
+        )
         app.config["AWS_SES_REGION"] = os.getenv("AWS_SES_REGION")
         app.config["AWS_SES_SENDER_EMAIL"] = os.getenv("AWS_SES_SENDER_EMAIL")
         app.config["PAYMENT_PROVIDER"] = os.getenv(

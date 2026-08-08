@@ -98,8 +98,9 @@ def test_s3_upload_and_delete_failures_are_normalized():
 
 
 def test_delete_and_url_generation_use_only_the_object_key():
-    """Storage can delete keys and generate reusable regional URLs."""
+    """Storage creates a private, expiring URL for an object key."""
     client = Mock()
+    client.generate_presigned_url.return_value = "https://signed.example/image"
     storage = _storage(client)
     key = "recipes/7/image name.webp"
 
@@ -108,10 +109,38 @@ def test_delete_and_url_generation_use_only_the_object_key():
     client.delete_object.assert_called_once_with(
         Bucket="recipe-images-test", Key=key
     )
-    assert storage.generate_image_url(key) == (
-        "https://recipe-images-test.s3.eu-west-1.amazonaws.com/"
-        "recipes/7/image%20name.webp"
+    assert storage.generate_image_url(key) == "https://signed.example/image"
+    client.generate_presigned_url.assert_called_once_with(
+        "get_object",
+        Params={"Bucket": "recipe-images-test", "Key": key},
+        ExpiresIn=3600,
     )
+
+
+def test_url_generation_returns_none_without_an_object_key():
+    """No S3 request is made when a recipe has no image."""
+    client = Mock()
+
+    assert _storage(client).generate_image_url(None) is None
+
+    client.generate_presigned_url.assert_not_called()
+
+
+def test_url_generation_uses_configured_expiration():
+    """A configured expiration is forwarded to boto3 unchanged."""
+    client = Mock()
+    storage = S3RecipeImageStorage(
+        access_key_id="test-access-key",
+        secret_access_key="test-secret-key",
+        region="eu-west-1",
+        bucket_name="recipe-images-test",
+        presigned_url_expiration=120,
+        client=client,
+    )
+
+    storage.generate_image_url("recipes/1/private.png")
+
+    assert client.generate_presigned_url.call_args.kwargs["ExpiresIn"] == 120
 
 
 def test_storage_requires_all_environment_backed_configuration():
