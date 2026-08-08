@@ -21,9 +21,15 @@ function ingredientLabel(ingredient) {
   return [ingredient.quantity, ingredient.unit, ingredient.name].filter(Boolean).join(' ')
 }
 
+function canManageRecipe(recipe, user) {
+  if (!recipe || !user) return false
+  if (['MODERATOR', 'ADMIN'].includes(user.role)) return true
+  return recipe.author?.id === user.id && ['DRAFT', 'REJECTED'].includes(recipe.status)
+}
+
 export function RecipeDetailsPage() {
   const { recipeId } = useParams()
-  const { isAuthenticated, isRestoring } = useAuth()
+  const { currentUser, isAuthenticated, isRestoring } = useAuth()
   const [recipe, setRecipe] = useState(null)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(true)
@@ -57,10 +63,11 @@ export function RecipeDetailsPage() {
 
   const createdAt = formatDate(recipe.created_at)
   const approvedAt = formatDate(recipe.approved_at)
+  const mayManage = canManageRecipe(recipe, currentUser)
 
   return (
     <article className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
-      <Link to="/recipes" className="text-sm font-semibold text-emerald-700 hover:text-emerald-800">← Back to recipes</Link>
+      <div className="flex flex-wrap items-center justify-between gap-3"><Link to="/recipes" className="text-sm font-semibold text-emerald-700 hover:text-emerald-800">← Back to recipes</Link>{mayManage ? <Link to={`/recipes/${recipe.id}/edit`} className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Edit recipe</Link> : null}</div>
       <div className="mt-6 grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
         <RecipeImage recipe={recipe} className="aspect-4/3 w-full overflow-hidden rounded-3xl shadow-lg shadow-emerald-950/10" />
         <div>

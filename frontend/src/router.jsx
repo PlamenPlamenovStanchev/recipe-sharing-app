@@ -3,6 +3,7 @@ import { ProtectedRoute } from './auth/ProtectedRoute.jsx'
 import { RoleRoute } from './auth/RoleRoute.jsx'
 import { AppLayout } from './layouts/AppLayout.jsx'
 import { CreateRecipePage } from './pages/CreateRecipePage.jsx'
+import { EditRecipePage } from './pages/EditRecipePage.jsx'
 import { HomePage } from './pages/HomePage.jsx'
 import { LoginPage } from './pages/LoginPage.jsx'
 import { NotFoundPage } from './pages/NotFoundPage.jsx'
@@ -27,6 +28,7 @@ export const router = createBrowserRouter([
             element: <RoleRoute allowedRoles={['USER', 'MODERATOR', 'ADMIN']} />,
             children: [
               { path: 'recipes/new', element: <CreateRecipePage /> },
+              { path: 'recipes/:recipeId/edit', element: <EditRecipePage /> },
             ],
           },
         ],
