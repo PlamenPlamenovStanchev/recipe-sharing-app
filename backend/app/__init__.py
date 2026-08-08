@@ -18,6 +18,10 @@ from app.models import (  # noqa: F401
     User,
 )
 from app.resources.auth import LoginResource, RegisterResource
+from app.resources.comments import (
+    CommentDetailResource,
+    RecipeCommentListResource,
+)
 from app.resources.health import HealthResource
 from app.resources.recipes import (
     RecipeApproveResource,
@@ -36,6 +40,11 @@ api.add_resource(RecipeDetailResource, "/recipes/<int:recipe_id>")
 api.add_resource(RecipeSubmitResource, "/recipes/<int:recipe_id>/submit")
 api.add_resource(RecipeApproveResource, "/recipes/<int:recipe_id>/approve")
 api.add_resource(RecipeRejectResource, "/recipes/<int:recipe_id>/reject")
+api.add_resource(
+    RecipeCommentListResource,
+    "/recipes/<int:recipe_id>/comments",
+)
+api.add_resource(CommentDetailResource, "/comments/<int:comment_id>")
 
 
 def create_app(config_name: str | None = None) -> Flask:

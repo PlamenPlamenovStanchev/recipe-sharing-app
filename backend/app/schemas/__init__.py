@@ -1,5 +1,10 @@
 """Serialization schema package."""
 
+from app.schemas.comments import (
+    CommentAuthorOutputSchema,
+    CommentInputSchema,
+    CommentOutputSchema,
+)
 from app.schemas.recipes import (
     RecipeIngredientInputSchema,
     RecipeIngredientOutputSchema,
@@ -16,6 +21,9 @@ from app.schemas.users import (
 )
 
 __all__ = [
+    "CommentAuthorOutputSchema",
+    "CommentInputSchema",
+    "CommentOutputSchema",
     "LoginSchema",
     "RecipeIngredientInputSchema",
     "RecipeIngredientOutputSchema",
