@@ -158,3 +158,20 @@ def test_staff_can_edit_and_soft_delete_any_comment(app):
     comment = db.session.get(Comment, comment_id)
     assert comment is not None
     assert comment.is_deleted is True
+
+
+def test_comment_author_can_soft_delete_own_comment(app):
+    """Authors can remove their comment without deleting its database row."""
+    comment = CommentFactory()
+    comment_id = comment.id
+    headers = _headers(comment.user)
+    db.session.commit()
+
+    response = app.test_client().delete(
+        f"/comments/{comment_id}", headers=headers
+    )
+
+    assert response.status_code == 204
+    persisted = db.session.get(Comment, comment_id)
+    assert persisted is not None
+    assert persisted.is_deleted is True

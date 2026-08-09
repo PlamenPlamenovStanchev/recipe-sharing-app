@@ -52,6 +52,7 @@ def test_recipe_list_includes_mocked_image_urls_with_one_storage_client(app):
             status=RecipeStatus.APPROVED,
             image_key="recipes/7/private.webp",
         )
+        recipe_with_image_id = recipe_with_image.id
         db.session.commit()
 
     storage = Mock()
@@ -64,7 +65,7 @@ def test_recipe_list_includes_mocked_image_urls_with_one_storage_client(app):
 
     assert response.status_code == 200
     recipes_by_id = {recipe["id"]: recipe for recipe in response.get_json()}
-    assert recipes_by_id[recipe_with_image.id]["image_url"] == (
+    assert recipes_by_id[recipe_with_image_id]["image_url"] == (
         "https://signed.example/list"
     )
     assert (

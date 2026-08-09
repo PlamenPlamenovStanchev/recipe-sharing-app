@@ -1,23 +1,9 @@
 """Integration tests for database-backed JWT role authorization."""
 
-import pytest
-from flask import jsonify
 from flask_jwt_extended import create_access_token
 
-from app.authorization import roles_required
 from app.models import UserRole
 from tests.factories import UserFactory
-
-
-@pytest.fixture(scope="module", autouse=True)
-def protected_test_route(app):
-    """Register a minimal protected endpoint used only by these tests."""
-    if "authorization_test_moderator" not in app.view_functions:
-
-        @app.get("/_test/moderator")
-        @roles_required(UserRole.MODERATOR, UserRole.ADMIN)
-        def authorization_test_moderator():
-            return jsonify({"status": "ok"})
 
 
 def _authorization_header(
@@ -34,7 +20,7 @@ def _authorization_header(
 
 def test_unauthenticated_access_is_rejected(app):
     """Endpoints guarded by roles reject missing JWTs."""
-    response = app.test_client().get("/_test/moderator")
+    response = app.test_client().get("/recipes/pending")
 
     assert response.status_code == 401
     assert response.get_json() == {"message": "Authentication is required."}
@@ -45,7 +31,7 @@ def test_user_is_denied_moderator_access(app):
     user = UserFactory(role=UserRole.USER)
 
     response = app.test_client().get(
-        "/_test/moderator", headers=_authorization_header(app, user)
+        "/recipes/pending", headers=_authorization_header(app, user)
     )
 
     assert response.status_code == 403
@@ -57,7 +43,7 @@ def test_current_database_role_overrides_jwt_role_claim(app):
     user = UserFactory(role=UserRole.USER)
 
     response = app.test_client().get(
-        "/_test/moderator",
+        "/recipes/pending",
         headers=_authorization_header(app, user, claim_role=UserRole.ADMIN),
     )
 
@@ -65,17 +51,22 @@ def test_current_database_role_overrides_jwt_role_claim(app):
     assert response.get_json() == {"message": "Insufficient permissions."}
 
 
-@pytest.mark.parametrize("role", [UserRole.MODERATOR, UserRole.ADMIN])
-def test_moderator_and_admin_are_allowed(app, role):
+def test_moderator_and_admin_are_allowed(app):
     """Current moderator and administrator roles are authorized."""
-    user = UserFactory(role=role)
+    moderator = UserFactory(role=UserRole.MODERATOR)
+    admin = UserFactory(role=UserRole.ADMIN)
 
-    response = app.test_client().get(
-        "/_test/moderator", headers=_authorization_header(app, user)
+    moderator_response = app.test_client().get(
+        "/recipes/pending",
+        headers=_authorization_header(app, moderator),
+    )
+    admin_response = app.test_client().get(
+        "/recipes/pending",
+        headers=_authorization_header(app, admin),
     )
 
-    assert response.status_code == 200
-    assert response.get_json() == {"status": "ok"}
+    assert moderator_response.status_code == 200
+    assert admin_response.status_code == 200
 
 
 def test_inactive_user_is_denied_after_token_issuance(app):
@@ -84,7 +75,7 @@ def test_inactive_user_is_denied_after_token_issuance(app):
     headers = _authorization_header(app, user)
     user.is_active = False
 
-    response = app.test_client().get("/_test/moderator", headers=headers)
+    response = app.test_client().get("/recipes/pending", headers=headers)
 
     assert response.status_code == 401
     assert response.get_json() == {"message": "Authentication is required."}

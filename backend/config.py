@@ -96,7 +96,7 @@ class TestingConfig(BaseConfig):
     TESTING = True
     SQLALCHEMY_ENGINE_OPTIONS = {
         **BaseConfig.SQLALCHEMY_ENGINE_OPTIONS,
-        "pool_size": 1,
+        "pool_size": 5,
         "max_overflow": 0,
     }
 
