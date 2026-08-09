@@ -41,9 +41,12 @@ export async function apiRequest(path, options = {}) {
   )
 
   const contentType = response.headers.get('content-type') || ''
-  const data = contentType.includes('application/json')
-    ? await response.json()
-    : await response.text()
+  const responseBody = await response.text()
+  const data = responseBody
+    ? contentType.includes('application/json')
+      ? JSON.parse(responseBody)
+      : responseBody
+    : null
 
   if (!response.ok) {
     throw new ApiError(data?.message || 'The request could not be completed.', {
