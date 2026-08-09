@@ -41,19 +41,24 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes postgresql-client unzip curl tar
 
-          installer_directory="$(mktemp -d)"
-          trap 'rm -rf "$installer_directory"' EXIT
-          cd "$installer_directory"
+          if command -v aws >/dev/null 2>&1; then
+            aws --version
+          else
+            installer_directory="$(mktemp -d)"
+            trap 'rm -rf "$installer_directory"' EXIT
+            cd "$installer_directory"
 
-          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" \
-            -o "awscliv2.zip"
-          unzip -q awscliv2.zip
-          sudo ./aws/install
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" \
+              -o "awscliv2.zip"
+            unzip -q awscliv2.zip
+            sudo ./aws/install
+
+            cd "$GITHUB_WORKSPACE"
+            rm -rf "$installer_directory"
+            trap - EXIT
+          fi
+
           aws --version
-
-          cd "$GITHUB_WORKSPACE"
-          rm -rf "$installer_directory"
-          trap - EXIT
 
       - name: Validate production backup configuration
         shell: bash
