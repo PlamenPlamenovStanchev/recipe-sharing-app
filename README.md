@@ -49,3 +49,25 @@ pytest --cov=app --cov-report=html
 ```
 
 The HTML coverage report is written to `backend/htmlcov/index.html`.
+
+## Postman collection
+
+Import both files from the [`postman`](postman) directory into Postman:
+
+- `Recipe-Sharing-API.postman_collection.json`
+- `Recipe-Sharing-Local.postman_environment.json`
+
+Select the **Recipe Sharing - Local** environment and start the backend at
+`http://localhost:5000`. Run **Authentication / Register** once if the demo
+account does not exist, then run **Authentication / Login**. A successful login
+automatically saves `access_token`, and **Recipes / Create Recipe** saves the
+created `recipe_id`. Comment and admin-user creation requests similarly save
+`comment_id` and `user_id`.
+
+For moderator or administrator requests, log in with an appropriate locally
+created account and replace the environment token by running **Login** with
+that account's demonstration credentials. Select an image file manually in the
+multipart request before running **Images / Upload Recipe Image**. Donation
+requests must target another user's approved recipe. The included passwords and
+email addresses are demonstration placeholders only; do not store real secrets
+in the collection or environment export.

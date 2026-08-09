@@ -1,0 +1,328 @@
+{
+  "info": {
+    "_postman_id": "38e1f436-2d49-4d82-b825-07e968b0d0fc",
+    "name": "Recipe Sharing API",
+    "description": "Live-demonstration collection for the current Flask Recipe Sharing API. Protected requests inherit the collection Bearer token. Run Authentication / Login first to save access_token automatically. Create Recipe saves recipe_id automatically.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      { "key": "token", "value": "{{access_token}}", "type": "string" }
+    ]
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:5000" },
+    { "key": "access_token", "value": "" },
+    { "key": "recipe_id", "value": "1" },
+    { "key": "comment_id", "value": "1" },
+    { "key": "user_id", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "1. Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/health",
+            "description": "Public process health check."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Authentication",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{demo_email}}\",\n  \"username\": \"{{demo_username}}\",\n  \"password\": \"{{demo_password}}\",\n  \"first_name\": \"Course\",\n  \"last_name\": \"Demo\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{base_url}}/auth/register",
+            "description": "Creates a USER account. The environment contains demonstration-only credentials."
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login succeeded', function () { pm.response.to.have.status(200); });",
+                  "const data = pm.response.json();",
+                  "if (data.access_token) pm.environment.set('access_token', data.access_token);",
+                  "if (data.user && data.user.id) pm.environment.set('user_id', data.user.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{demo_email}}\",\n  \"password\": \"{{demo_password}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{base_url}}/auth/login",
+            "description": "Authenticates an active user and saves access_token and user_id into the selected environment."
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Recipes",
+      "item": [
+        {
+          "name": "List Public Recipes",
+          "request": { "auth": { "type": "noauth" }, "method": "GET", "header": [], "url": "{{base_url}}/recipes", "description": "Returns APPROVED recipes only." }
+        },
+        {
+          "name": "Recipe Details",
+          "request": { "auth": { "type": "noauth" }, "method": "GET", "header": [], "url": "{{base_url}}/recipes/{{recipe_id}}", "description": "Public recipe details request. To demonstrate authenticated access to a hidden recipe, remove the request-level no-auth override so collection Bearer authentication is inherited." }
+        },
+        {
+          "name": "Create Recipe",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Recipe created', function () { pm.response.to.have.status(201); });",
+                  "const data = pm.response.json();",
+                  "if (data.id) pm.environment.set('recipe_id', data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Postman Demonstration Recipe\",\n  \"description\": \"A complete draft recipe created during the API demonstration.\",\n  \"ingredients\": [\n    {\n      \"name\": \"Flour\",\n      \"quantity\": \"250\",\n      \"unit\": \"g\",\n      \"position\": 1,\n      \"notes\": \"Sifted\"\n    },\n    {\n      \"name\": \"Water\",\n      \"quantity\": \"150\",\n      \"unit\": \"ml\",\n      \"position\": 2,\n      \"notes\": null\n    }\n  ],\n  \"steps\": [\n    { \"step_number\": 1, \"instruction\": \"Combine the ingredients.\" },\n    { \"step_number\": 2, \"instruction\": \"Cook until ready.\" }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{base_url}}/recipes",
+            "description": "Creates a DRAFT owned by the authenticated user and saves recipe_id."
+          }
+        },
+        {
+          "name": "Update Recipe",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Postman Demonstration Recipe\",\n  \"description\": \"The recipe was updated through the API collection.\",\n  \"ingredients\": [\n    { \"name\": \"Flour\", \"quantity\": \"250\", \"unit\": \"g\", \"position\": 1, \"notes\": \"Sifted\" },\n    { \"name\": \"Water\", \"quantity\": \"150\", \"unit\": \"ml\", \"position\": 2, \"notes\": null }\n  ],\n  \"steps\": [\n    { \"step_number\": 1, \"instruction\": \"Combine the ingredients thoroughly.\" },\n    { \"step_number\": 2, \"instruction\": \"Cook until ready and serve.\" }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{base_url}}/recipes/{{recipe_id}}",
+            "description": "Owners can update their DRAFT or REJECTED recipes; MODERATOR and ADMIN can update any recipe."
+          }
+        },
+        {
+          "name": "Delete Recipe",
+          "request": { "method": "DELETE", "header": [], "url": "{{base_url}}/recipes/{{recipe_id}}", "description": "Destructive request. Run only when the selected recipe should be deleted." }
+        },
+        {
+          "name": "Submit Recipe",
+          "request": { "method": "POST", "header": [], "url": "{{base_url}}/recipes/{{recipe_id}}/submit", "description": "Owner submits an eligible DRAFT or REJECTED recipe for moderation." }
+        }
+      ]
+    },
+    {
+      "name": "4. Moderation",
+      "item": [
+        {
+          "name": "Pending Recipes",
+          "request": { "method": "GET", "header": [], "url": "{{base_url}}/recipes/pending", "description": "MODERATOR or ADMIN only; oldest submitted recipes first." }
+        },
+        {
+          "name": "Approve Recipe",
+          "request": { "method": "POST", "header": [], "url": "{{base_url}}/recipes/{{recipe_id}}/approve", "description": "MODERATOR or ADMIN approves a PENDING recipe." }
+        },
+        {
+          "name": "Reject Recipe",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Please clarify the cooking temperature and timing.\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{base_url}}/recipes/{{recipe_id}}/reject",
+            "description": "MODERATOR or ADMIN rejects a PENDING recipe. Reason must contain 5-500 characters."
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Images",
+      "item": [
+        {
+          "name": "Upload Recipe Image",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "image", "type": "file", "src": "", "description": "Select a JPEG, PNG, or WebP file up to 5 MB." }
+              ]
+            },
+            "url": "{{base_url}}/recipes/{{recipe_id}}/image",
+            "description": "Select a local file in Postman before sending. Do not manually set Content-Type; Postman supplies the multipart boundary."
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Comments",
+      "item": [
+        {
+          "name": "List Comments",
+          "request": { "auth": { "type": "noauth" }, "method": "GET", "header": [], "url": "{{base_url}}/recipes/{{recipe_id}}/comments", "description": "Lists non-deleted comments for an approved recipe, oldest first." }
+        },
+        {
+          "name": "Create Comment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Comment created', function () { pm.response.to.have.status(201); });",
+                  "const data = pm.response.json();",
+                  "if (data.id) pm.environment.set('comment_id', data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"content\": \"This recipe worked very well.\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{base_url}}/recipes/{{recipe_id}}/comments",
+            "description": "Creates a 2-1000 character comment on an APPROVED recipe and saves comment_id."
+          }
+        },
+        {
+          "name": "Edit Comment",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"content\": \"Updated comment from the Postman demonstration.\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{base_url}}/comments/{{comment_id}}",
+            "description": "Comment author, MODERATOR, or ADMIN."
+          }
+        },
+        {
+          "name": "Delete Comment",
+          "request": { "method": "DELETE", "header": [], "url": "{{base_url}}/comments/{{comment_id}}", "description": "Soft-deletes the comment; it will no longer appear in normal listings." }
+        }
+      ]
+    },
+    {
+      "name": "7. Likes",
+      "item": [
+        {
+          "name": "Like Count",
+          "request": { "auth": { "type": "noauth" }, "method": "GET", "header": [], "url": "{{base_url}}/recipes/{{recipe_id}}/likes", "description": "Public like count for an APPROVED recipe." }
+        },
+        {
+          "name": "Like Recipe",
+          "request": { "method": "POST", "header": [], "url": "{{base_url}}/recipes/{{recipe_id}}/likes", "description": "Likes an APPROVED recipe as the current user. Duplicate likes return 409." }
+        },
+        {
+          "name": "Unlike Recipe",
+          "request": { "method": "DELETE", "header": [], "url": "{{base_url}}/recipes/{{recipe_id}}/likes", "description": "Removes the current user's like. A missing like returns 404." }
+        }
+      ]
+    },
+    {
+      "name": "8. Donations",
+      "item": [
+        {
+          "name": "Create Donation",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"amount\": \"10.00\",\n  \"currency\": \"EUR\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{base_url}}/recipes/{{recipe_id}}/donations",
+            "description": "Amount must be a positive JSON string with at most two decimal places. The donor cannot own the APPROVED recipe. Payment processing depends on the configured backend provider."
+          }
+        }
+      ]
+    },
+    {
+      "name": "9. Admin Users",
+      "item": [
+        {
+          "name": "List Users",
+          "request": { "method": "GET", "header": [], "url": "{{base_url}}/admin/users", "description": "ADMIN only." }
+        },
+        {
+          "name": "Get User",
+          "request": { "method": "GET", "header": [], "url": "{{base_url}}/admin/users/{{user_id}}", "description": "ADMIN only." }
+        },
+        {
+          "name": "Create User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Admin user created', function () { pm.response.to.have.status(201); });",
+                  "const data = pm.response.json();",
+                  "if (data.id) pm.environment.set('user_id', data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{admin_demo_email}}\",\n  \"username\": \"{{admin_demo_username}}\",\n  \"password\": \"{{demo_password}}\",\n  \"first_name\": \"Managed\",\n  \"last_name\": \"User\",\n  \"role\": \"USER\",\n  \"is_active\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{base_url}}/admin/users",
+            "description": "ADMIN creates a validated account and saves its user_id."
+          }
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Updated\",\n  \"last_name\": \"User\",\n  \"role\": \"MODERATOR\",\n  \"is_active\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{base_url}}/admin/users/{{user_id}}",
+            "description": "ADMIN updates supported account fields. Self-protection and last-active-admin rules apply."
+          }
+        },
+        {
+          "name": "Deactivate User",
+          "request": { "method": "DELETE", "header": [], "url": "{{base_url}}/admin/users/{{user_id}}", "description": "ADMIN deactivates rather than physically deleting the account. Self-protection and last-active-admin rules apply." }
+        }
+      ]
+    }
+  ]
+}
