@@ -30,6 +30,7 @@ jobs:
       CLOUDFLARE_R2_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
       CLOUDFLARE_R2_BACKUP_BUCKET: ${{ secrets.CLOUDFLARE_R2_BACKUP_BUCKET }}
       BACKUP_ROOT_PREFIX: recipe-sharing-production
+      PG18_BIN: /usr/lib/postgresql/18/bin
 
     steps:
       - name: Check out repository
@@ -56,8 +57,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes postgresql-client-18
 
-          pg_dump_version="$(pg_dump --version)"
-          pg_restore_version="$(pg_restore --version)"
+          pg_dump_version="$("$PG18_BIN/pg_dump" --version)"
+          pg_restore_version="$("$PG18_BIN/pg_restore" --version)"
           echo "$pg_dump_version"
           echo "$pg_restore_version"
 
@@ -142,14 +143,15 @@ jobs:
 
           mkdir -p "$backup_directory" "$image_directory"
 
-          pg_dump \
+          "$PG18_BIN/pg_dump" \
             --dbname="$PRODUCTION_DATABASE_URL" \
             --format=custom \
             --compress=9 \
             --no-owner \
             --no-privileges \
             --file="$backup_directory/$database_archive"
-          pg_restore --list "$backup_directory/$database_archive" > /dev/null
+          "$PG18_BIN/pg_restore" \
+            --list "$backup_directory/$database_archive" > /dev/null
 
           aws s3 sync \
             "s3://${PRODUCTION_S3_RECIPE_BUCKET}" \
