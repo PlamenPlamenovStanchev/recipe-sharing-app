@@ -17,6 +17,7 @@ from app.models import (  # noqa: F401
     RecipeStep,
     User,
 )
+from app.openapi import openapi_blueprint
 from app.resources.admin_users import (
     AdminUserDetailResource,
     AdminUserListResource,
@@ -86,6 +87,7 @@ def create_app(config_name: str | None = None) -> Flask:
     jwt.init_app(app)
     configure_jwt_error_handlers()
     api.init_app(app)
+    app.register_blueprint(openapi_blueprint)
     app.cli.add_command(seed_db)
 
     return app
