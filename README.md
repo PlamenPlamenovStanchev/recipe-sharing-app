@@ -1,5 +1,7 @@
 # Recipe Sharing App
 
+[![CI](https://github.com/PlamenPlamenovStanchev/recipe-sharing-app/actions/workflows/ci.yml/badge.svg)](https://github.com/PlamenPlamenovStanchev/recipe-sharing-app/actions/workflows/ci.yml)
+
 A full-stack application for sharing, discovering, and managing recipes.
 
 ## Planned technologies
