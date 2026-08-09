@@ -80,7 +80,7 @@ export function RecipeDetailsPage() {
         <div>
           <div className="flex flex-wrap items-center gap-2">
             {recipe.status && recipe.status !== 'APPROVED' ? <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">{recipe.status}</span> : null}
-            {recipe.status === 'APPROVED' ? <LikeButton recipeId={recipe.id} initialCount={recipe.like_count ?? 0} initiallyLiked={recipe.liked_by_current_user ?? false} isAuthenticated={isAuthenticated} onCountChange={updateLikeCount} /> : <span className="rounded-full bg-rose-50 px-3 py-1 text-sm font-semibold text-rose-700">{recipe.like_count ?? 0} likes</span>}
+            {recipe.status === 'APPROVED' ? <LikeButton key={recipe.id} recipeId={recipe.id} initialCount={recipe.like_count ?? 0} initiallyLiked={recipe.liked_by_current_user ?? false} isAuthenticated={isAuthenticated} onCountChange={updateLikeCount} /> : <span className="rounded-full bg-rose-50 px-3 py-1 text-sm font-semibold text-rose-700">{recipe.like_count ?? 0} likes</span>}
           </div>
           <h1 className="mt-4 text-4xl font-black tracking-tight text-stone-950 sm:text-5xl">{recipe.title}</h1>
           <p className="mt-4 text-lg leading-8 text-stone-600">{recipe.description}</p>

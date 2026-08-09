@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { authenticatedApi, api } from '../lib/api.js'
 import { getRequestErrorMessage } from '../lib/formErrors.js'
@@ -8,17 +8,13 @@ export function LikeButton({ recipeId, initialCount = 0, initiallyLiked = false,
   const [isLiked, setIsLiked] = useState(initiallyLiked)
   const [error, setError] = useState('')
   const [isUpdating, setIsUpdating] = useState(false)
-
-  useEffect(() => {
-    setCount(initialCount)
-    setIsLiked(initiallyLiked)
-  }, [initialCount, initiallyLiked])
+  const requestInFlight = useRef(false)
 
   useEffect(() => {
     let active = true
     api.get(`/recipes/${recipeId}/likes`)
       .then(({ count: serverCount }) => {
-        if (!active) return
+        if (!active || requestInFlight.current) return
         setCount(serverCount)
         onCountChange?.(serverCount)
       })
@@ -27,7 +23,8 @@ export function LikeButton({ recipeId, initialCount = 0, initiallyLiked = false,
   }, [onCountChange, recipeId])
 
   const toggleLike = async () => {
-    if (isUpdating) return
+    if (requestInFlight.current) return
+    requestInFlight.current = true
     setIsUpdating(true)
     setError('')
     const wasLiked = isLiked
@@ -44,6 +41,7 @@ export function LikeButton({ recipeId, initialCount = 0, initiallyLiked = false,
       onCountChange?.(count)
       setError(getRequestErrorMessage(requestError))
     } finally {
+      requestInFlight.current = false
       setIsUpdating(false)
     }
   }

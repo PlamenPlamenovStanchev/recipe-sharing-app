@@ -24,16 +24,25 @@ export function RecipeImageUpload({ recipe, onUploaded }) {
     const selectedFile = event.target.files?.[0] || null
     setError('')
     setSuccess('')
-    if (!selectedFile) return
+    if (!selectedFile) {
+      setFile(null)
+      setPreviewUrl(recipe.image_url || null)
+      return
+    }
     if (!ACCEPTED_TYPES.includes(selectedFile.type)) {
+      setFile(null)
+      setPreviewUrl(recipe.image_url || null)
+      event.target.value = ''
       setError('Choose a JPEG, PNG, or WebP image.')
       return
     }
     if (selectedFile.size === 0 || selectedFile.size > MAX_IMAGE_SIZE) {
+      setFile(null)
+      setPreviewUrl(recipe.image_url || null)
+      event.target.value = ''
       setError('Choose a non-empty image smaller than 5 MB.')
       return
     }
-    if (previewUrl?.startsWith('blob:')) URL.revokeObjectURL(previewUrl)
     setFile(selectedFile)
     setPreviewUrl(URL.createObjectURL(selectedFile))
   }
