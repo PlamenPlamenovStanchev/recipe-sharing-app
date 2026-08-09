@@ -8,7 +8,16 @@ role-based access control, private image storage, community interactions,
 administration tools, API documentation, automated tests, and production
 operations workflows.
 
-## Features by role
+## 🔗 Quick links
+
+- [Production frontend](https://my-flask-recipe-app.netlify.app)
+- [Production backend](https://recipe-sharing-app-be08.onrender.com)
+- [Swagger UI](https://recipe-sharing-app-be08.onrender.com/docs)
+- [OpenAPI JSON](https://recipe-sharing-app-be08.onrender.com/openapi.json)
+- [Health endpoint](https://recipe-sharing-app-be08.onrender.com/health)
+- [GitHub Actions CI](https://github.com/PlamenPlamenovStanchev/recipe-sharing-app/actions/workflows/ci.yml)
+
+## 👥 Features by role
 
 ### Anonymous visitor
 
@@ -78,7 +87,22 @@ for every permission decision.
   implemented**
 - Private Cloudflare R2 storage for scheduled production backups
 
-## Architecture
+## 🏗️ Architecture
+
+```mermaid
+flowchart LR
+    user["Browser / User"] --> frontend["React + Vite frontend"]
+    frontend --> api["Flask REST API"]
+    api --> neon[("Neon PostgreSQL")]
+    api --> s3[("Private AWS S3")]
+    api --> ses["AWS SES"]
+    api --> payments["PaymentProvider abstraction"]
+
+    actions["GitHub Actions"] --> databaseBackup["Neon database backup"]
+    actions --> imageBackup["AWS S3 image backup"]
+    databaseBackup --> r2[("Private Cloudflare R2")]
+    imageBackup --> r2
+```
 
 The backend follows a layered Flask-RESTful design:
 
@@ -96,7 +120,7 @@ The React application separates routing, authentication context, API clients,
 pages, layouts, and reusable UI components. Public requests use the public API
 client; authenticated requests inherit the centrally managed Bearer token.
 
-## Database overview
+## 🗄️ Database overview
 
 The main entities are:
 
@@ -113,6 +137,106 @@ The main entities are:
 
 Foreign keys and delete behavior preserve account and donation history while
 allowing recipe-owned child rows to follow recipe lifecycle rules.
+
+```mermaid
+erDiagram
+    USER {
+        integer id PK
+        string email UK
+        string username UK
+        string password_hash
+        string first_name "nullable"
+        string last_name "nullable"
+        string role
+        boolean is_active
+        string wise_recipient_id "nullable"
+        datetime created_at
+        datetime updated_at
+    }
+
+    RECIPE {
+        integer id PK
+        string title
+        string slug UK
+        text description "nullable"
+        string image_key "nullable"
+        string status
+        integer author_id FK
+        integer approved_by_id FK "nullable"
+        datetime submitted_at "nullable"
+        datetime approved_at "nullable"
+        datetime rejected_at "nullable"
+        text rejection_reason "nullable"
+        datetime created_at
+        datetime updated_at
+    }
+
+    INGREDIENT {
+        integer id PK
+        string name UK
+    }
+
+    RECIPE_INGREDIENT {
+        integer id PK
+        integer recipe_id FK
+        integer ingredient_id FK
+        string quantity "nullable"
+        string unit "nullable"
+        integer position
+        text notes "nullable"
+    }
+
+    RECIPE_STEP {
+        integer id PK
+        integer recipe_id FK
+        integer step_number
+        text instruction
+    }
+
+    COMMENT {
+        integer id PK
+        text content
+        integer user_id FK
+        integer recipe_id FK
+        boolean is_deleted
+        datetime created_at
+        datetime updated_at
+    }
+
+    RECIPE_LIKE {
+        integer id PK
+        integer user_id FK
+        integer recipe_id FK
+        datetime created_at
+    }
+
+    DONATION {
+        integer id PK
+        integer donor_id FK
+        integer recipient_id FK
+        integer recipe_id FK
+        decimal amount
+        string currency
+        string status
+        string wise_transfer_id "nullable"
+        string idempotency_key UK
+        datetime created_at
+        datetime completed_at "nullable"
+    }
+
+    USER ||--o{ RECIPE : authors
+    USER o|--o{ RECIPE : approves
+    RECIPE ||--o{ RECIPE_INGREDIENT : contains
+    INGREDIENT ||--o{ RECIPE_INGREDIENT : appears_in
+    RECIPE ||--o{ RECIPE_STEP : has
+    USER ||--o{ COMMENT : writes
+    RECIPE ||--o{ COMMENT : receives
+    USER ||--o{ RECIPE_LIKE : creates
+    RECIPE ||--o{ RECIPE_LIKE : receives
+    USER ||--o{ DONATION : sends
+    USER ||--o{ DONATION : receives
+    RECIPE ||--o{ DONATION : receives
+```
 
 ## Authentication and authorization
 
@@ -133,9 +257,12 @@ and provider credentials are never serialized.
 
 ## Recipe moderation
 
-```text
-DRAFT ──submit──> PENDING ──approve──> APPROVED
-                         └──reject───> REJECTED ──edit/resubmit──> PENDING
+```mermaid
+stateDiagram-v2
+    DRAFT --> PENDING : submit
+    PENDING --> APPROVED : approve
+    PENDING --> REJECTED : reject
+    REJECTED --> PENDING : resubmit
 ```
 
 Only approved recipes appear in the public catalog. Owners can view their own
@@ -186,7 +313,7 @@ fields are excluded from responses. Administrators cannot deactivate or demote
 themselves through protected operations, and the service prevents removal of
 the last active administrator.
 
-## Local setup
+## 🚀 Local setup
 
 Prerequisites: Python 3.13, Node.js 22, npm, and PostgreSQL. Copy environment
 templates locally and replace placeholders; never commit `.env` files.
@@ -299,7 +426,7 @@ The command is idempotent, refuses to run outside development, and creates
 representative users and recipes. Override its demonstration credentials with
 the `SEED_*` variables when needed.
 
-## Quality checks
+## 🧪 Quality checks
 
 ### Backend tests and coverage
 
@@ -365,7 +492,7 @@ separate private Cloudflare R2 bucket, verifies archives, and retains 7 daily,
 secrets in the `production-backups` environment. Setup, restoration, and
 workflow-disable instructions are in [DEPLOYMENT.md](DEPLOYMENT.md).
 
-## Security decisions
+## 🔒 Security decisions
 
 - Argon2 password hashing and write-only password input fields.
 - Short-lived JWT access tokens with database-backed active-user and role
@@ -406,17 +533,6 @@ recipe-sharing-app/
 ├── DEPLOYMENT.md            # Production and backup runbook
 └── README.md
 ```
-
-## Screenshots
-
-Screenshots can be added under `docs/screenshots/` for the final course defense:
-
-- Public recipe catalog and recipe details
-- Recipe editor and image upload
-- Comments, likes, and donation dialog
-- Moderator pending queue
-- Admin user management dashboard
-- Swagger UI and successful CI run
 
 ## Author
 
