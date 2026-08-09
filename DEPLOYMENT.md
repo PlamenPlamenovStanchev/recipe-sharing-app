@@ -111,3 +111,51 @@ After migrations and both deployments are complete, verify:
 8. Registration remains successful if SES is temporarily unavailable.
 9. Donation behavior is treated as provider-abstraction mode until the real
    Wise integration is completed and separately verified.
+
+## Scheduled production backups
+
+The independent `.github/workflows/backup.yml` workflow runs every day at
+approximately 03:00 UTC and can also be started manually with
+`workflow_dispatch`. It creates a compressed PostgreSQL custom-format dump,
+verifies the dump with `pg_restore`, downloads and compresses the production
+recipe image bucket, creates SHA-256 checksums, and uploads the results to a
+separate private Cloudflare R2 bucket.
+
+Backups are stored below `recipe-sharing-production/` with the following
+retention policy:
+
+- the newest 7 daily backups;
+- the newest 5 Sunday weekly backups;
+- the newest 12 first-of-month backups.
+
+Configure a GitHub environment named `production-backups` and add these as
+GitHub Actions secrets, either on that environment or at repository level:
+
+| Secret | Purpose |
+| --- | --- |
+| `PRODUCTION_DATABASE_URL` | Production PostgreSQL/Neon URL used only by `pg_dump`. |
+| `PRODUCTION_AWS_ACCESS_KEY_ID` | Read access to the production recipe image bucket. |
+| `PRODUCTION_AWS_SECRET_ACCESS_KEY` | Secret for the production S3 reader. |
+| `PRODUCTION_AWS_REGION` | Region containing the recipe image bucket. |
+| `PRODUCTION_S3_RECIPE_BUCKET` | Production recipe image bucket name. |
+| `CLOUDFLARE_R2_ACCOUNT_ID` | Account owning the private R2 backup bucket. |
+| `CLOUDFLARE_R2_ACCESS_KEY_ID` | R2 API token access key with backup-bucket access. |
+| `CLOUDFLARE_R2_SECRET_ACCESS_KEY` | R2 API token secret. |
+| `CLOUDFLARE_R2_BACKUP_BUCKET` | Separate private bucket receiving backups. |
+
+Use least-privilege credentials: the production AWS identity needs read/list
+access to recipe images, while the R2 identity needs list/read/write/delete only
+inside the private backup bucket. The backup bucket must not be public and must
+not be the live recipe image bucket. Never use `TEST_DATABASE_URL` or test
+bucket credentials in this production workflow.
+
+Test restoration periodically in an isolated database and private temporary
+bucket. Download a selected dated prefix, verify it with `sha256sum -c
+SHA256SUMS`, restore the database dump with `pg_restore`, and extract the image
+archive before copying objects to an isolated recovery bucket.
+
+After the course or project ends, open the repository's **Actions** page,
+select **Production backups**, choose the workflow menu, and click **Disable
+workflow**. This disables both scheduled and manual runs without deleting
+existing R2 backups. Confirm the workflow shows as disabled, then separately
+apply the desired final retention or deletion policy to the private R2 bucket.

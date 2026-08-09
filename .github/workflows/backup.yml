@@ -1,0 +1,211 @@
+name: Production backups
+
+on:
+  schedule:
+    # Daily at 03:17 UTC. The offset avoids the busiest top-of-hour period.
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-backups
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: PostgreSQL and recipe image backup
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: production-backups
+    env:
+      PRODUCTION_DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+      PRODUCTION_AWS_ACCESS_KEY_ID: ${{ secrets.PRODUCTION_AWS_ACCESS_KEY_ID }}
+      PRODUCTION_AWS_SECRET_ACCESS_KEY: ${{ secrets.PRODUCTION_AWS_SECRET_ACCESS_KEY }}
+      PRODUCTION_AWS_REGION: ${{ secrets.PRODUCTION_AWS_REGION }}
+      PRODUCTION_S3_RECIPE_BUCKET: ${{ secrets.PRODUCTION_S3_RECIPE_BUCKET }}
+      CLOUDFLARE_R2_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_R2_ACCOUNT_ID }}
+      CLOUDFLARE_R2_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
+      CLOUDFLARE_R2_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
+      CLOUDFLARE_R2_BACKUP_BUCKET: ${{ secrets.CLOUDFLARE_R2_BACKUP_BUCKET }}
+      BACKUP_ROOT_PREFIX: recipe-sharing-production
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install backup clients
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client awscli
+
+      - name: Validate production backup configuration
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          required=(
+            PRODUCTION_DATABASE_URL
+            PRODUCTION_AWS_ACCESS_KEY_ID
+            PRODUCTION_AWS_SECRET_ACCESS_KEY
+            PRODUCTION_AWS_REGION
+            PRODUCTION_S3_RECIPE_BUCKET
+            CLOUDFLARE_R2_ACCOUNT_ID
+            CLOUDFLARE_R2_ACCESS_KEY_ID
+            CLOUDFLARE_R2_SECRET_ACCESS_KEY
+            CLOUDFLARE_R2_BACKUP_BUCKET
+          )
+
+          for variable_name in "${required[@]}"; do
+            if [[ -z "${!variable_name:-}" ]]; then
+              echo "::error::Required production backup secret is missing: ${variable_name}"
+              exit 1
+            fi
+          done
+
+          if [[ "$PRODUCTION_DATABASE_URL" != postgres://* && "$PRODUCTION_DATABASE_URL" != postgresql://* ]]; then
+            echo "::error::PRODUCTION_DATABASE_URL must be a PostgreSQL connection URL."
+            exit 1
+          fi
+
+          if [[ "$CLOUDFLARE_R2_BACKUP_BUCKET" == "$PRODUCTION_S3_RECIPE_BUCKET" ]]; then
+            echo "::error::The private backup bucket must be separate from the recipe image bucket."
+            exit 1
+          fi
+
+      - name: Create and verify backup archives
+        id: archives
+        shell: bash
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.PRODUCTION_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.PRODUCTION_AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.PRODUCTION_AWS_REGION }}
+        run: |
+          set -Eeuo pipefail
+          trap 'echo "::error::Backup archive creation failed at line ${LINENO}."' ERR
+
+          backup_date="$(date -u +%F)"
+          backup_timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
+          backup_directory="${RUNNER_TEMP}/recipe-sharing-backup"
+          image_directory="${RUNNER_TEMP}/recipe-images"
+          database_archive="recipe-sharing-database-${backup_timestamp}.dump"
+          image_archive="recipe-images-${backup_timestamp}.tar.gz"
+
+          mkdir -p "$backup_directory" "$image_directory"
+
+          pg_dump \
+            --dbname="$PRODUCTION_DATABASE_URL" \
+            --format=custom \
+            --compress=9 \
+            --no-owner \
+            --no-privileges \
+            --file="$backup_directory/$database_archive"
+          pg_restore --list "$backup_directory/$database_archive" > /dev/null
+
+          aws s3 sync \
+            "s3://${PRODUCTION_S3_RECIPE_BUCKET}" \
+            "$image_directory" \
+            --only-show-errors
+          tar -C "$image_directory" -czf "$backup_directory/$image_archive" .
+
+          (
+            cd "$backup_directory"
+            sha256sum "$database_archive" "$image_archive" > SHA256SUMS
+          )
+
+          echo "backup_date=$backup_date" >> "$GITHUB_OUTPUT"
+          echo "backup_directory=$backup_directory" >> "$GITHUB_OUTPUT"
+          echo "backup_timestamp=$backup_timestamp" >> "$GITHUB_OUTPUT"
+
+      - name: Upload archives to private Cloudflare R2 bucket
+        shell: bash
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ENDPOINT_URL: https://${{ secrets.CLOUDFLARE_R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          BACKUP_DATE: ${{ steps.archives.outputs.backup_date }}
+          BACKUP_DIRECTORY: ${{ steps.archives.outputs.backup_directory }}
+        run: |
+          set -Eeuo pipefail
+          trap 'echo "::error::Uploading backup archives to R2 failed at line ${LINENO}."' ERR
+
+          upload_tier() {
+            local tier="$1"
+            aws s3 cp \
+              "$BACKUP_DIRECTORY" \
+              "s3://${CLOUDFLARE_R2_BACKUP_BUCKET}/${BACKUP_ROOT_PREFIX}/${tier}/${BACKUP_DATE}/" \
+              --recursive \
+              --only-show-errors \
+              --endpoint-url "$R2_ENDPOINT_URL"
+          }
+
+          upload_tier daily
+
+          if [[ "$(date -u +%u)" == "7" ]]; then
+            upload_tier weekly
+          fi
+
+          if [[ "$(date -u +%d)" == "01" ]]; then
+            upload_tier monthly
+          fi
+
+      - name: Apply backup retention policy
+        shell: bash
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ENDPOINT_URL: https://${{ secrets.CLOUDFLARE_R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+        run: |
+          set -Eeuo pipefail
+          trap 'echo "::error::Backup retention failed at line ${LINENO}."' ERR
+
+          prune_tier() {
+            local tier="$1"
+            local keep="$2"
+            local prefix="${BACKUP_ROOT_PREFIX}/${tier}/"
+            local listed_prefixes
+            local stored_prefixes=()
+
+            listed_prefixes="$(
+              aws s3api list-objects-v2 \
+                --bucket "$CLOUDFLARE_R2_BACKUP_BUCKET" \
+                --prefix "$prefix" \
+                --delimiter "/" \
+                --query "CommonPrefixes[].Prefix" \
+                --output text \
+                --endpoint-url "$R2_ENDPOINT_URL"
+            )"
+
+            mapfile -t stored_prefixes < <(
+              printf '%s\n' "$listed_prefixes" \
+              | tr '\t' '\n' \
+              | grep -E "^${prefix}[0-9]{4}-[0-9]{2}-[0-9]{2}/$" \
+              | sort --reverse \
+              || true
+            )
+
+            if (( ${#stored_prefixes[@]} <= keep )); then
+              return
+            fi
+
+            for expired_prefix in "${stored_prefixes[@]:keep}"; do
+              echo "Removing expired ${tier} backup: ${expired_prefix}"
+              aws s3 rm \
+                "s3://${CLOUDFLARE_R2_BACKUP_BUCKET}/${expired_prefix}" \
+                --recursive \
+                --only-show-errors \
+                --endpoint-url "$R2_ENDPOINT_URL"
+            done
+          }
+
+          prune_tier daily 7
+          prune_tier weekly 5
+          prune_tier monthly 12
+
+      - name: Report successful backup
+        run: |
+          echo "Production database and recipe images were backed up successfully."
+          echo "Retention: 7 daily, 5 weekly, and 12 monthly backups."
