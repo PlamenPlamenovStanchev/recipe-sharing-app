@@ -6,7 +6,7 @@ from flask import Flask
 
 from app.authorization import configure_jwt_error_handlers
 from app.commands import seed_db
-from app.extensions import api, db, jwt, migrate
+from app.extensions import api, cors, db, jwt, migrate
 from app.models import (  # noqa: F401
     Comment,
     Donation,
@@ -87,6 +87,13 @@ def create_app(config_name: str | None = None) -> Flask:
     jwt.init_app(app)
     configure_jwt_error_handlers()
     api.init_app(app)
+    frontend_origin = app.config.get("FRONTEND_ORIGIN")
+    if frontend_origin:
+        cors.init_app(
+            app,
+            resources={r"/*": {"origins": [frontend_origin]}},
+            supports_credentials=False,
+        )
     app.register_blueprint(openapi_blueprint)
     app.cli.add_command(seed_db)
 

@@ -63,6 +63,8 @@ class BaseConfig:
         app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(
             minutes=int(os.getenv("JWT_ACCESS_TOKEN_EXPIRES_MINUTES", "60"))
         )
+        frontend_origin = os.getenv("FRONTEND_ORIGIN", "").strip().rstrip("/")
+        app.config["FRONTEND_ORIGIN"] = frontend_origin or None
         app.config["AWS_ACCESS_KEY_ID"] = os.getenv("AWS_ACCESS_KEY_ID")
         app.config["AWS_SECRET_ACCESS_KEY"] = os.getenv(
             "AWS_SECRET_ACCESS_KEY"
@@ -113,6 +115,12 @@ class ProductionConfig(BaseConfig):
             raise RuntimeError("SECRET_KEY must be set in production.")
         if not os.getenv("JWT_SECRET_KEY"):
             raise RuntimeError("JWT_SECRET_KEY must be set in production.")
+        if not app.config["FRONTEND_ORIGIN"]:
+            raise RuntimeError("FRONTEND_ORIGIN must be set in production.")
+        if app.config["FRONTEND_ORIGIN"] == "*":
+            raise RuntimeError(
+                "FRONTEND_ORIGIN cannot allow every origin in production."
+            )
 
 
 CONFIG_BY_NAME = {

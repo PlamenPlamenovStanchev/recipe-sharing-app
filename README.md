@@ -4,6 +4,9 @@
 
 A full-stack application for sharing, discovering, and managing recipes.
 
+Production setup, required environment variables, migrations, CORS, and
+Netlify instructions are documented in [DEPLOYMENT.md](DEPLOYMENT.md).
+
 ## Planned technologies
 
 - Backend: Python, Flask, Flask-RESTful, SQLAlchemy, PostgreSQL, Alembic/Flask-Migrate, and Marshmallow
